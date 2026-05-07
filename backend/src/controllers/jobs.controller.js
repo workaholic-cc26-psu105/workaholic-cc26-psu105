@@ -2,7 +2,13 @@ const jobsService = require("../services/jobs.service");
 
 const getAllJobs = async (req, res) => {
   try {
-    const jobs = await jobsService.getAllJobs();
+    const { keyword, category, location } = req.query;
+
+    const jobs = await jobsService.getAllJobs({
+      keyword,
+      category,
+      location
+    });
 
     res.json({
       success: true,
