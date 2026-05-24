@@ -1,5 +1,5 @@
 import { useState } from "react";
-import Navbar from "../components/Navbar";
+import LandingNavbar from "../components/LandingNavbar";
 import CopyrightFooter from "../components/CopyrightFooter";
 import { useNavigate } from "react-router-dom";
 
@@ -29,7 +29,11 @@ export default function LoginPage() {
     // Simulasi login
     setTimeout(() => {
       setIsLoading(false);
-      setErrorMsg("Kata sandi salah. Silakan coba lagi.");
+
+      // SIMPAN TOKEN LOGIN
+      localStorage.setItem("token", "user-login");
+
+      navigate("/home");
     }, 1000);
   };
 
@@ -37,10 +41,10 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col font-sans antialiased">
 
       {/* Navbar */}
-      <Navbar />
+      <LandingNavbar fixed />
 
       {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center bg-[#F0F0F0] py-10">
+      <main className="flex-1 flex items-center justify-center bg-[#F0F0F0] pt-32 pb-10">
         <div className="w-full max-w-xl bg-white rounded-[32px] shadow-xl px-10 py-12">
 
           {/* Judul */}
@@ -81,7 +85,9 @@ export default function LoginPage() {
           {/* Separator */}
           <div className="flex items-center gap-4 mb-6">
             <div className="flex-1 h-px bg-gray-200" />
-            <span className="text-sm text-gray-400 font-medium">atau</span>
+            <span className="text-sm text-gray-400 font-medium">
+              atau
+            </span>
             <div className="flex-1 h-px bg-gray-200" />
           </div>
 

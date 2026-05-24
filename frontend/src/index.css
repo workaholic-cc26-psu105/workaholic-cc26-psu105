@@ -12,8 +12,12 @@
   }
 }
 
-/* Hilangkan ikon mata bawaan browser Edge/IE */
+/* menghilangkan ikon mata bawaan browser Edge/IE */
 input::-ms-reveal,
 input::-ms-clear {
   display: none;
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out;
 }

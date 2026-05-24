@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Navbar from "../components/Navbar";
+import LandingNavbar from "../components/LandingNavbar";
 import CopyrightFooter from "../components/CopyrightFooter";
 
 // ── STEP 1: FORM EMAIL ───────────────────────────
@@ -317,11 +317,10 @@ export default function ForgotPasswordPage() {
     <div className="min-h-screen flex flex-col font-sans antialiased">
 
       {/* Navbar */}
-      <Navbar />
+      <LandingNavbar fixed />
 
       {/* Main */}
-      <main className="flex-1 flex items-center justify-center bg-[#F0F0F0] py-10 relative">
-
+      <main className="flex-1 flex items-center justify-center bg-[#F0F0F0] pt-32 pb-32 relative min-h-[120vh]">
         {step === "email" && (
           <StepEmail onNext={() => setStep("reset")} />
         )}

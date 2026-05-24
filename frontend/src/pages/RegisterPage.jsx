@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Navbar from "../components/Navbar";
+import LandingNavbar from "../components/LandingNavbar";
 import CopyrightFooter from "../components/CopyrightFooter";
 
 // ── MAIN PAGE ────────────────────────────────────
@@ -75,8 +75,14 @@ export default function RegisterPage() {
     setTimeout(() => {
       setIsLoading(false);
 
-      // munculkan popup sukses
+      // tampilkan popup sukses
       setIsSuccess(true);
+
+      // pindah otomatis ke home setelah 5 detik
+      setTimeout(() => {
+      navigate("/home");
+      }, 5000);
+
     }, 1200);
   };
 
@@ -84,10 +90,10 @@ export default function RegisterPage() {
     <div className="min-h-screen flex flex-col font-sans antialiased">
 
       {/* Navbar */}
-      <Navbar />
+      <LandingNavbar fixed />
 
       {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center bg-[#F0F0F0] py-10 px-4">
+      <main className="flex-1 flex items-center justify-center bg-[#F0F0F0] pt-32 pb-10">
 
         {/* Register Card */}
         <div className="w-full max-w-xl bg-white rounded-[32px] shadow-xl px-10 py-12">
@@ -353,15 +359,15 @@ export default function RegisterPage() {
               </h2>
 
               <p className="text-sm text-gray-500 text-center leading-relaxed mb-8">
-                Akun kamu berhasil dibuat. Silakan masuk untuk melanjutkan.
+                Akun kamu berhasil dibuat dan siap digunakan.
               </p>
 
               {/* Button */}
               <button
-                onClick={() => navigate("/login")}
+                onClick={() => navigate("/home")}
                 className="w-full py-3.5 bg-[#8B1A1A] text-white font-bold rounded-xl hover:bg-[#701515] transition-all"
               >
-                Masuk Sekarang
+                Masuk ke Home
               </button>
 
             </div>
