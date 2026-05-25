@@ -1,6 +1,5 @@
 FROM python:3.10-slim
 
-# Install system deps needed by some packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     git \
@@ -12,17 +11,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxext6 \
     && rm -rf /var/lib/apt/lists/*
 
+# HuggingFace requires non-root user
+RUN useradd -m -u 1000 user
+USER user
+ENV HOME=/home/user PATH=/home/user/.local/bin:$PATH
+
 WORKDIR /app
 
-# Install Python deps
-COPY requirements.txt /app/requirements.txt
-RUN python -m pip install --upgrade pip
+COPY --chown=user requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir --upgrade pip
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
-# Copy project files after installing deps to use Docker cache efficiently
-COPY . /app
+COPY --chown=user . /app
 
-EXPOSE 8080
+EXPOSE 7860
+ENV PORT=7860
 
-ENV PORT=8080
-CMD ["gunicorn", "--bind", "0.0.0.0:$PORT", "api.app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:7860", "--timeout", "120", "api.app:app"]
