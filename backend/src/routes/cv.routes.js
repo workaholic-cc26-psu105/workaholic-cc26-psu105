@@ -7,7 +7,7 @@ const router = express.Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 2 * 1024 * 1024
+    fileSize: 2 * 1024 * 1024,
   },
   fileFilter: (req, file, cb) => {
     if (file.mimetype !== "application/pdf") {
@@ -15,7 +15,7 @@ const upload = multer({
     }
 
     cb(null, true);
-  }
+  },
 });
 
 router.post("/cv/analyze", upload.single("cv_file"), cvController.analyzeCv);

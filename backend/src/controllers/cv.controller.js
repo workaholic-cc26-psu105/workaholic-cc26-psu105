@@ -6,7 +6,7 @@ const analyzeCv = async (req, res) => {
 
     res.json({
       success: true,
-      data: result
+      data: result,
     });
   } catch (error) {
     const statusCode = error.statusCode || 500;
@@ -16,7 +16,7 @@ const analyzeCv = async (req, res) => {
       message:
         statusCode === 422
           ? error.message
-          : "Terjadi kesalahan pada server"
+          : error.message || "Terjadi kesalahan pada server",
     });
   }
 };
@@ -27,12 +27,12 @@ const getCvHistory = async (req, res) => {
 
     res.json({
       success: true,
-      data: history
+      data: history,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Terjadi kesalahan pada server"
+      message: "Terjadi kesalahan pada server",
     });
   }
 };
@@ -45,12 +45,12 @@ const deleteCvHistory = async (req, res) => {
 
     res.json({
       success: true,
-      message: result.message
+      message: result.message,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Terjadi kesalahan pada server"
+      message: "Terjadi kesalahan pada server",
     });
   }
 };
@@ -58,5 +58,5 @@ const deleteCvHistory = async (req, res) => {
 module.exports = {
   analyzeCv,
   getCvHistory,
-  deleteCvHistory
+  deleteCvHistory,
 };

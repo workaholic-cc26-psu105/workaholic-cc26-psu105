@@ -1,13 +1,15 @@
 const supabase = require("../config/supabase");
-
 const { DEV_USER_ID } = require("../config/devUser");
+const aiService = require("./ai.service");
+
+const USE_AI_MOCK = process.env.USE_AI_MOCK === "true";
 
 const formatDate = (date) => {
   return new Intl.DateTimeFormat("id-ID", {
     day: "2-digit",
     month: "long",
     year: "numeric",
-    timeZone: "Asia/Jakarta"
+    timeZone: "Asia/Jakarta",
   }).format(new Date(date));
 };
 
@@ -52,27 +54,37 @@ const getMockSkills = (role) => {
     "Backend Developer": ["Node.js", "Express", "PostgreSQL", "REST API"],
     "Frontend Developer": ["HTML", "CSS", "JavaScript", "React"],
     "Data Analyst": ["Python", "SQL", "Excel", "Data Visualization"],
-    "Cybersecurity Analyst": ["Linux", "Network Security", "Cybersecurity", "Risk Analysis"],
-    "Mobile Developer": ["Flutter", "Dart", "Firebase", "Mobile UI"]
+    "Cybersecurity Analyst": [
+      "Linux",
+      "Network Security",
+      "Cybersecurity",
+      "Risk Analysis",
+    ],
+    "Mobile Developer": ["Flutter", "Dart", "Firebase", "Mobile UI"],
   };
 
   return skillMap[role] || skillMap["Frontend Developer"];
 };
 
-const getRecommendedJobs = async (role) => {
+const getRecommendedJobsFromDatabase = async (role) => {
   const keywordMap = {
     "Backend Developer": "backend",
     "Frontend Developer": "frontend",
     "Data Analyst": "data",
+    "Data Scientist": "data",
     "Cybersecurity Analyst": "security",
-    "Mobile Developer": "mobile"
+    "Mobile Developer": "mobile",
+    "Software Engineer": "software",
+    "Web Developer": "web",
   };
 
   const keyword = keywordMap[role] || "developer";
 
   const { data, error } = await supabase
     .from("jobs")
-    .select("id, job_title, company_name, locations, employment, salary_min, salary_max")
+    .select(
+      "id, job_title, company_name, locations, employment, salary_min, salary_max"
+    )
     .or(`job_title.ilike.%${keyword}%,full_text.ilike.%${keyword}%`)
     .limit(5);
 
@@ -85,23 +97,74 @@ const getRecommendedJobs = async (role) => {
     judul: job.job_title,
     perusahaan: job.company_name || "Perusahaan tidak disebutkan",
     lokasi: job.locations || "Lokasi tidak disebutkan",
-    tipe: job.employment || "Tidak disebutkan",
-    gaji: formatSalary(job.salary_min, job.salary_max)
+    tipe: formatEmployment(job.employment),
+    gaji: formatSalary(job.salary_min, job.salary_max),
   }));
 };
 
-const analyzeCv = async (file) => {
-  if (!file) {
-    const error = new Error("File harus berformat PDF dan maksimal 2MB");
-    error.statusCode = 422;
-    throw error;
+const findMatchingJob = async (recommendation) => {
+  const jobTitle = recommendation.jobTitle || "";
+  const companyName = recommendation.companyName || "";
+  const locations = recommendation.locations || "";
+
+  let query = supabase
+    .from("jobs")
+    .select(
+      "id, job_title, company_name, locations, employment, salary_min, salary_max"
+    )
+    .limit(1);
+
+  if (jobTitle) {
+    query = query.ilike("job_title", `%${jobTitle}%`);
   }
 
+  if (companyName) {
+    query = query.ilike("company_name", `%${companyName}%`);
+  }
+
+  if (locations) {
+    query = query.ilike("locations", `%${locations}%`);
+  }
+
+  const { data, error } = await query;
+
+  if (error || !data || data.length === 0) {
+    return null;
+  }
+
+  return data[0];
+};
+
+const mapAiRecommendationToFrontend = async (recommendation) => {
+  const matchedJob = await findMatchingJob(recommendation);
+
+  return {
+    id: matchedJob?.id || null,
+    judul:
+      matchedJob?.job_title ||
+      recommendation.jobTitle ||
+      "Lowongan tidak disebutkan",
+    perusahaan:
+      matchedJob?.company_name ||
+      recommendation.companyName ||
+      "Perusahaan tidak disebutkan",
+    lokasi:
+      matchedJob?.locations ||
+      recommendation.locations ||
+      "Lokasi tidak disebutkan",
+    tipe: formatEmployment(matchedJob?.employment || recommendation.employment),
+    gaji:
+      recommendation.salary_range ||
+      formatSalary(matchedJob?.salary_min, matchedJob?.salary_max),
+  };
+};
+
+const createMockAnalysis = async (file) => {
   const role = detectMockRole(file.originalname);
   const skills = getMockSkills(role);
-  const rekomendasi = await getRecommendedJobs(role);
+  const rekomendasi = await getRecommendedJobsFromDatabase(role);
 
-  const analysisResult = {
+  return {
     file_name: file.originalname,
     date: formatDate(new Date()),
     ats_score: 86,
@@ -112,19 +175,54 @@ const analyzeCv = async (file) => {
     saran: [
       "Lengkapi CV dengan pengalaman proyek yang relevan",
       "Tambahkan skill teknis yang sesuai dengan posisi tujuan",
-      "Gunakan format CV yang rapi dan mudah dibaca sistem ATS"
+      "Gunakan format CV yang rapi dan mudah dibaca sistem ATS",
     ],
-    rekomendasi
+    rekomendasi,
   };
+};
 
+const createAnalysisFromAi = async (file, aiResult) => {
+  if (aiResult.status !== "success") {
+    throw new Error(aiResult.message || "AI gagal menganalisis CV");
+  }
+
+  const mappedRecommendations = await Promise.all(
+    (aiResult.rekomendasi || []).map(mapAiRecommendationToFrontend)
+  );
+
+  return {
+    file_name: file.originalname,
+    date: formatDate(new Date()),
+    ats_score: Math.round(aiResult.ats_score || aiResult.confidence_pct || 0),
+    kecocokan_utama:
+      aiResult.kecocokan_utama ||
+      aiResult.predicted_category ||
+      aiResult.kategori ||
+      "Tidak disebutkan",
+    kisaran_gaji:
+      aiResult.kisaran_gaji ||
+      aiResult.salary_estimate?.salary_range ||
+      "Gaji tidak dicantumkan",
+    skills: Array.isArray(aiResult.skills) ? aiResult.skills : [],
+    kategori: Array.isArray(aiResult.kategori)
+      ? aiResult.kategori
+      : [aiResult.kategori || aiResult.predicted_category].filter(Boolean),
+    saran: Array.isArray(aiResult.saran)
+      ? aiResult.saran
+      : [aiResult.saran || "Tingkatkan skill yang sesuai dengan posisi tujuan."],
+    rekomendasi: mappedRecommendations,
+  };
+};
+
+const saveAnalysis = async (fileName, analysisResult) => {
   const { data, error } = await supabase
     .from("cv_analyses")
     .insert({
       user_id: DEV_USER_ID,
-      file_name: file.originalname,
-      analysis_result: analysisResult
+      file_name: fileName,
+      analysis_result: analysisResult,
     })
-    .select("id, created_at, analysis_result")
+    .select("id, analysis_result")
     .single();
 
   if (error) {
@@ -133,8 +231,27 @@ const analyzeCv = async (file) => {
 
   return {
     id: data.id,
-    ...data.analysis_result
+    ...data.analysis_result,
   };
+};
+
+const analyzeCv = async (file) => {
+  if (!file) {
+    const error = new Error("File harus berformat PDF dan maksimal 2MB");
+    error.statusCode = 422;
+    throw error;
+  }
+
+  let analysisResult;
+
+  if (USE_AI_MOCK) {
+    analysisResult = await createMockAnalysis(file);
+  } else {
+    const aiResult = await aiService.predictCvFromPdf(file);
+    analysisResult = await createAnalysisFromAi(file, aiResult);
+  }
+
+  return saveAnalysis(file.originalname, analysisResult);
 };
 
 const getCvHistory = async () => {
@@ -150,7 +267,7 @@ const getCvHistory = async () => {
 
   return data.map((item) => ({
     id: item.id,
-    ...item.analysis_result
+    ...item.analysis_result,
   }));
 };
 
@@ -166,12 +283,12 @@ const deleteCvHistory = async (id) => {
   }
 
   return {
-    message: "Riwayat analisis berhasil dihapus"
+    message: "Riwayat analisis berhasil dihapus",
   };
 };
 
 module.exports = {
   analyzeCv,
   getCvHistory,
-  deleteCvHistory
+  deleteCvHistory,
 };
