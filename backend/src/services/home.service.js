@@ -34,11 +34,11 @@ const getMatchingJobsCount = async (role) => {
   return count || 0;
 };
 
-const getHomeStats = async () => {
+const getHomeStats = async (userId) => {
   const { data: latestAnalysis, error } = await supabase
     .from("cv_analyses")
     .select("id, file_name, analysis_result, created_at")
-    .eq("user_id", DEV_USER_ID)
+    .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();

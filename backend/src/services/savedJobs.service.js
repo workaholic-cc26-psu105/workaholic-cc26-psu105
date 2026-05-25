@@ -1,7 +1,5 @@
 const supabase = require("../config/supabase");
 
-const { DEV_USER_ID } = require("../config/devUser");
-
 const formatSalary = (min, max) => {
   if (!min && !max) return "Gaji tidak dicantumkan";
 
@@ -16,6 +14,14 @@ const formatSalary = (min, max) => {
   if (max) return `Hingga Rp ${formatMillion(max)}`;
 
   return "Gaji tidak dicantumkan";
+};
+
+const formatEmployment = (employment) => {
+  if (!employment || employment.toLowerCase() === "unknown") {
+    return "Tidak disebutkan";
+  }
+
+  return employment;
 };
 
 const getEducation = (text = "") => {
@@ -38,14 +44,14 @@ const mapSavedJob = (wishlist) => {
     perusahaan: job.company_name || "Perusahaan tidak disebutkan",
     lokasi: job.locations || "Lokasi tidak disebutkan",
     kategori: job.categories_name || "Tidak disebutkan",
-    tipe: job.employment || "Tidak disebutkan",
+    tipe: formatEmployment(job.employment),
     salary: formatSalary(job.salary_min, job.salary_max),
     pendidikan: getEducation(job.full_text || job.description),
-    saved_at: wishlist.created_at
+    saved_at: wishlist.created_at,
   };
 };
 
-const getSavedJobs = async () => {
+const getSavedJobs = async (userId) => {
   const { data, error } = await supabase
     .from("wishlists")
     .select(`
@@ -64,7 +70,7 @@ const getSavedJobs = async () => {
         description
       )
     `)
-    .eq("user_id", DEV_USER_ID)
+    .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -74,7 +80,7 @@ const getSavedJobs = async () => {
   return data.map(mapSavedJob);
 };
 
-const toggleSavedJob = async (jobId) => {
+const toggleSavedJob = async (userId, jobId) => {
   const { data: job, error: jobError } = await supabase
     .from("jobs")
     .select("id")
@@ -88,7 +94,7 @@ const toggleSavedJob = async (jobId) => {
   const { data: existingSavedJob, error: checkError } = await supabase
     .from("wishlists")
     .select("id")
-    .eq("user_id", DEV_USER_ID)
+    .eq("user_id", userId)
     .eq("job_id", jobId)
     .maybeSingle();
 
@@ -108,16 +114,14 @@ const toggleSavedJob = async (jobId) => {
 
     return {
       saved: false,
-      message: "Lowongan dihapus dari simpanan"
+      message: "Lowongan dihapus dari simpanan",
     };
   }
 
-  const { error: insertError } = await supabase
-    .from("wishlists")
-    .insert({
-      user_id: DEV_USER_ID,
-      job_id: jobId
-    });
+  const { error: insertError } = await supabase.from("wishlists").insert({
+    user_id: userId,
+    job_id: jobId,
+  });
 
   if (insertError) {
     throw new Error(insertError.message);
@@ -125,15 +129,15 @@ const toggleSavedJob = async (jobId) => {
 
   return {
     saved: true,
-    message: "Lowongan berhasil disimpan"
+    message: "Lowongan berhasil disimpan",
   };
 };
 
-const deleteSavedJob = async (jobId) => {
+const deleteSavedJob = async (userId, jobId) => {
   const { error } = await supabase
     .from("wishlists")
     .delete()
-    .eq("user_id", DEV_USER_ID)
+    .eq("user_id", userId)
     .eq("job_id", jobId);
 
   if (error) {
@@ -141,12 +145,12 @@ const deleteSavedJob = async (jobId) => {
   }
 
   return {
-    message: "Lowongan dihapus dari simpanan"
+    message: "Lowongan dihapus dari simpanan",
   };
 };
 
 module.exports = {
   getSavedJobs,
   toggleSavedJob,
-  deleteSavedJob
+  deleteSavedJob,
 };

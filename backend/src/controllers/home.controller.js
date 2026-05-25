@@ -2,20 +2,20 @@ const homeService = require("../services/home.service");
 
 const getHomeStats = async (req, res) => {
   try {
-    const stats = await homeService.getHomeStats();
+    const stats = await homeService.getHomeStats(req.user.id);
 
     res.json({
       success: true,
-      data: stats
+      data: stats,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Terjadi kesalahan pada server"
+      message: "Terjadi kesalahan pada server",
     });
   }
 };
 
 module.exports = {
-  getHomeStats
+  getHomeStats,
 };

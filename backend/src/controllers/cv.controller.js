@@ -2,7 +2,7 @@ const cvService = require("../services/cv.service");
 
 const analyzeCv = async (req, res) => {
   try {
-    const result = await cvService.analyzeCv(req.file);
+    const result = await cvService.analyzeCv(req.user.id, req.file);
 
     res.json({
       success: true,
@@ -23,7 +23,7 @@ const analyzeCv = async (req, res) => {
 
 const getCvHistory = async (req, res) => {
   try {
-    const history = await cvService.getCvHistory();
+    const history = await cvService.getCvHistory(req.user.id);
 
     res.json({
       success: true,
@@ -41,7 +41,7 @@ const deleteCvHistory = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const result = await cvService.deleteCvHistory(id);
+    const result = await cvService.deleteCvHistory(req.user.id, id);
 
     res.json({
       success: true,

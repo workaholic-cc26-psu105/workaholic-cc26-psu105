@@ -1,6 +1,5 @@
 const supabase = require("../config/supabase");
 const { DEV_USER_ID } = require("../config/devUser");
-const aiService = require("./ai.service");
 
 const USE_AI_MOCK = process.env.USE_AI_MOCK === "true";
 
@@ -214,11 +213,11 @@ const createAnalysisFromAi = async (file, aiResult) => {
   };
 };
 
-const saveAnalysis = async (fileName, analysisResult) => {
+const saveAnalysis = async (userId, fileName, analysisResult) => {
   const { data, error } = await supabase
     .from("cv_analyses")
     .insert({
-      user_id: DEV_USER_ID,
+      user_id: userId,
       file_name: fileName,
       analysis_result: analysisResult,
     })
@@ -235,7 +234,7 @@ const saveAnalysis = async (fileName, analysisResult) => {
   };
 };
 
-const analyzeCv = async (file) => {
+const analyzeCv = async (userId, file) => {
   if (!file) {
     const error = new Error("File harus berformat PDF dan maksimal 2MB");
     error.statusCode = 422;
@@ -251,14 +250,14 @@ const analyzeCv = async (file) => {
     analysisResult = await createAnalysisFromAi(file, aiResult);
   }
 
-  return saveAnalysis(file.originalname, analysisResult);
+  return saveAnalysis(userId, file.originalname, analysisResult);
 };
 
-const getCvHistory = async () => {
+const getCvHistory = async (userId) => {
   const { data, error } = await supabase
     .from("cv_analyses")
     .select("id, analysis_result, created_at")
-    .eq("user_id", DEV_USER_ID)
+    .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -271,12 +270,12 @@ const getCvHistory = async () => {
   }));
 };
 
-const deleteCvHistory = async (id) => {
+const deleteCvHistory = async (userId, id) => {
   const { error } = await supabase
     .from("cv_analyses")
     .delete()
     .eq("id", id)
-    .eq("user_id", DEV_USER_ID);
+    .eq("user_id", userId);
 
   if (error) {
     throw new Error(error.message);

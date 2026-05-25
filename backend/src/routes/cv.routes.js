@@ -1,6 +1,7 @@
 const express = require("express");
 const multer = require("multer");
 const cvController = require("../controllers/cv.controller");
+const { authenticateUser } = require("../middlewares/auth.middleware");
 
 const router = express.Router();
 
@@ -18,8 +19,19 @@ const upload = multer({
   },
 });
 
-router.post("/cv/analyze", upload.single("cv_file"), cvController.analyzeCv);
-router.get("/cv/history", cvController.getCvHistory);
-router.delete("/cv/history/:id", cvController.deleteCvHistory);
+router.post(
+  "/cv/analyze",
+  authenticateUser,
+  upload.single("cv_file"),
+  cvController.analyzeCv
+);
+
+router.get("/cv/history", authenticateUser, cvController.getCvHistory);
+
+router.delete(
+  "/cv/history/:id",
+  authenticateUser,
+  cvController.deleteCvHistory
+);
 
 module.exports = router;
