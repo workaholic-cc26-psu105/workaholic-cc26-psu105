@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import LandingNavbar from "../components/LandingNavbar";
 import CopyrightFooter from "../components/CopyrightFooter";
+import { apiRequest } from "../services/api";
 
 // ── MAIN PAGE ────────────────────────────────────
 export default function RegisterPage() {
@@ -40,7 +41,6 @@ export default function RegisterPage() {
 
     setError("");
 
-    // Validasi kosong
     if (
       !formData.nama ||
       !formData.email ||
@@ -51,19 +51,16 @@ export default function RegisterPage() {
       return;
     }
 
-    // Validasi email
     if (!/\S+@\S+\.\S+/.test(formData.email)) {
       setError("Format email tidak valid.");
       return;
     }
 
-    // Validasi password
     if (formData.password.length < 8) {
       setError("Kata sandi minimal 8 karakter.");
       return;
     }
 
-    // Konfirmasi password
     if (formData.password !== formData.konfirmasiPassword) {
       setError("Konfirmasi kata sandi tidak cocok.");
       return;
@@ -71,19 +68,50 @@ export default function RegisterPage() {
 
     setIsLoading(true);
 
-    // Simulasi register
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const result = await apiRequest("/auth/register", {
+        method: "POST",
+        body: JSON.stringify({
+          nama: formData.nama,
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
 
-      // tampilkan popup sukses
+      if (result.data?.token) {
+        localStorage.setItem("token", result.data.token);
+      }
+
+      if (result.data) {
+        localStorage.setItem(
+          "user",
+          JSON.stringify({
+            id: result.data.id,
+            nama: result.data.nama,
+            email: result.data.email,
+          })
+        );
+
+        localStorage.setItem(
+          "userProfile",
+          JSON.stringify({
+            id: result.data.id,
+            nama: result.data.nama,
+            email: result.data.email,
+          })
+        );
+      }
+
       setIsSuccess(true);
 
-      // pindah otomatis ke home setelah 5 detik
       setTimeout(() => {
-      navigate("/home");
-      }, 5000);
-
-    }, 1200);
+        navigate("/home");
+      }, 1500);
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

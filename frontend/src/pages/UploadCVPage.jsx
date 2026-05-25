@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiRequest } from "../services/api";
 
 import {
   Upload,
@@ -94,138 +95,75 @@ export default function UploadCVPage() {
     []
   );
 
-  // ANALISIS
-  const handleAnalisis = () => {
-    if (!file) {
-      setError(
-        "Silakan upload CV terlebih dahulu."
-      );
-      return;
-    }
+// ANALISIS
+const handleAnalisis = async () => {
+  if (!file) {
+    setError("Silakan upload CV terlebih dahulu.");
+    return;
+  }
 
-    setIsLoading(true);
+  const token = localStorage.getItem("token");
 
-    setTimeout(() => {
-      setIsLoading(false);
+  if (!token) {
+    navigate("/login");
+    return;
+  }
 
-      // DATA HASIL ANALISIS
-      const newAnalysis = {
-        id: Date.now(),
-        fileName: file.name,
-        date:
-          new Date().toLocaleDateString(
-            "id-ID"
-          ),
+  setIsLoading(true);
+  setError("");
 
-        ats: `${
-          Math.floor(
-            Math.random() * 20
-          ) + 75
-        }%`,
+  try {
+    const formData = new FormData();
+    formData.append("cv_file", file);
 
-        atsScore: `${
-          Math.floor(
-            Math.random() * 20
-          ) + 75
-        }%`,
+    const result = await apiRequest("/cv/analyze", {
+      method: "POST",
+      body: formData,
+    });
 
-        category:
-          "Frontend Developer",
+    const analysis = result.data;
 
-        skor:
-          Math.floor(
-            Math.random() * 20
-          ) + 75,
+    const normalizedAnalysis = {
+      ...analysis,
 
-        kecocokanUtama:
-          "Frontend Developer",
+      // field asli dari backend
+      id: analysis.id,
+      file_name: analysis.file_name,
+      date: analysis.date,
+      ats_score: analysis.ats_score,
+      kecocokan_utama: analysis.kecocokan_utama,
+      kisaran_gaji: analysis.kisaran_gaji,
+      skills: analysis.skills || [],
+      kategori: analysis.kategori || [],
+      saran: analysis.saran || [],
+      rekomendasi: analysis.rekomendasi || [],
 
-        kisaranGaji:
-          "Rp 4.000.000 – Rp 8.000.000 / bulan",
+      // field tambahan agar halaman review lama tetap aman
+      fileName: analysis.file_name,
+      skor: analysis.ats_score,
+      ats: `${analysis.ats_score}%`,
+      atsScore: `${analysis.ats_score}%`,
+      category: analysis.kecocokan_utama,
+      kecocokanUtama: analysis.kecocokan_utama,
+      kisaranGaji: analysis.kisaran_gaji,
+    };
 
-        skills: [
-          "HTML",
-          "CSS",
-          "JavaScript",
-          "React",
-          "Tailwind CSS",
-        ],
+    localStorage.setItem(
+      "selectedCVReview",
+      JSON.stringify(normalizedAnalysis)
+    );
 
-        kategori: [
-          "Frontend Developer",
-          "UI/UX Designer",
-          "Web Developer",
-        ],
+    localStorage.setItem("hasAnalysis", "true");
 
-        saran: [
-          "Pelajari React Hooks lebih lanjut",
-          "Tingkatkan skill API Integration",
-          "Tambahkan project portfolio modern",
-          "Pelajari TypeScript untuk peluang lebih besar",
-        ],
+    window.dispatchEvent(new Event("profileUpdated"));
 
-        rekomendasi: [
-          {
-            id: 1,
-            judul:
-              "Frontend Developer",
-            perusahaan:
-              "PT Digital Kreatif",
-            lokasi: "Jakarta",
-            tipe: "Full-time",
-            gaji: "Rp 5jt – 8jt",
-          },
-
-          {
-            id: 2,
-            judul:
-              "UI/UX Designer",
-            perusahaan:
-              "Startup Inovasi",
-            lokasi: "Remote",
-            tipe: "Remote",
-            gaji: "Rp 4jt – 7jt",
-          },
-
-          {
-            id: 3,
-            judul:
-              "Web Developer",
-            perusahaan:
-              "CV Teknologi Nusantara",
-            lokasi: "Bandung",
-            tipe: "Full-time",
-            gaji: "Rp 4jt – 6jt",
-          },
-        ],
-      };
-
-      // AMBIL DATA LAMA
-      const existingAnalysis =
-        JSON.parse(
-          localStorage.getItem(
-            "cvAnalysisHistory"
-          )
-        ) || [];
-
-      // SIMPAN DATA BARU
-      localStorage.setItem(
-        "cvAnalysisHistory",
-        JSON.stringify([
-          newAnalysis,
-          ...existingAnalysis,
-        ])
-      );
-
-      // STATUS SUDAH ANALISIS
-      localStorage.setItem(
-        "hasAnalysis",
-        "true"
-      );
-
-      navigate("/review");
-    }, 2500);
-  };
+    navigate("/review");
+  } catch (error) {
+    setError(error.message || "Gagal menganalisis CV.");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <>
