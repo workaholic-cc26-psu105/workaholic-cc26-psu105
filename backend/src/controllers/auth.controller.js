@@ -40,7 +40,47 @@ const login = async (req, res) => {
   }
 };
 
+const forgotPassword = async (req, res) => {
+  try {
+    const result = await authService.forgotPassword(req.body);
+
+    res.json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error) {
+    const statusCode = error.statusCode || 500;
+
+    res.status(statusCode).json({
+      success: false,
+      message:
+        statusCode === 500 ? "Terjadi kesalahan pada server" : error.message,
+    });
+  }
+};
+
+const resetPassword = async (req, res) => {
+  try {
+    const result = await authService.resetPassword(req.body);
+
+    res.json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error) {
+    const statusCode = error.statusCode || 500;
+
+    res.status(statusCode).json({
+      success: false,
+      message:
+        statusCode === 500 ? "Terjadi kesalahan pada server" : error.message,
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
+  forgotPassword,
+  resetPassword,
 };
