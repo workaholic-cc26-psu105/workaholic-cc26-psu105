@@ -2,6 +2,9 @@ const express = require("express");
 const cors = require("cors");
 const healthRoutes = require("./routes/health.routes");
 const jobsRoutes = require("./routes/jobs.routes");
+const savedJobsRoutes = require("./routes/savedJobs.routes");
+const cvRoutes = require("./routes/cv.routes");
+const homeRoutes = require("./routes/home.routes");
 
 const app = express();
 
@@ -10,6 +13,9 @@ app.use(express.json());
 
 app.use("/api", healthRoutes);
 app.use("/api", jobsRoutes);
+app.use("/api", savedJobsRoutes);
+app.use("/api", cvRoutes);
+app.use("/api", homeRoutes);
 
 app.get("/", (req, res) => {
   res.json({
