@@ -2,6 +2,7 @@ import { useState } from "react";
 import LandingNavbar from "../components/LandingNavbar";
 import CopyrightFooter from "../components/CopyrightFooter";
 import { useNavigate } from "react-router-dom";
+import { apiRequest } from "../services/api";
 
 // ── MAIN PAGE ────────────────────────────────────
 export default function LoginPage() {
@@ -13,29 +14,38 @@ export default function LoginPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Handle submit login
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setErrorMsg("");
+// Handle submit login
+const handleLogin = async (e) => {
+  e.preventDefault();
+  setErrorMsg("");
 
-    // Validasi sederhana
-    if (!email || !password) {
-      setErrorMsg("Email dan kata sandi tidak boleh kosong.");
-      return;
-    }
+  if (!email || !password) {
+    setErrorMsg("Email dan kata sandi tidak boleh kosong.");
+    return;
+  }
 
-    setIsLoading(true);
+  setIsLoading(true);
 
-    // Simulasi login
-    setTimeout(() => {
-      setIsLoading(false);
+  try {
+    const result = await apiRequest("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({
+        email,
+        password,
+      }),
+    });
 
-      // SIMPAN TOKEN LOGIN
-      localStorage.setItem("token", "user-login");
+    localStorage.setItem("token", result.token);
+    localStorage.setItem("user", JSON.stringify(result.data));
+    localStorage.setItem("userProfile", JSON.stringify(result.data));
 
-      navigate("/home");
-    }, 1000);
-  };
+    navigate("/home");
+  } catch (error) {
+    setErrorMsg(error.message);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen flex flex-col font-sans antialiased">
