@@ -1457,7 +1457,7 @@ export default function LandingPage() {
     localStorage.getItem("token");
 
   return (
-    <div className="font-sans antialiased bg-white selection:bg-[#8B1A1A] selection:text-white">
+  <div className="font-sans antialiased bg-white selection:bg-[#8B1A1A] selection:text-white">
 
       {/* NAVBAR */}
       {isLoggedIn ? (

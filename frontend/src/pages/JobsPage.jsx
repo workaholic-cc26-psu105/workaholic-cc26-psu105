@@ -1,5 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import {
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
+
 import { apiRequest } from "../services/api";
 
 import {
@@ -24,12 +28,14 @@ const POPULAR_SEARCH = [
 
 // ── MAIN PAGE ─────────────────────────────────────
 export default function JobsPage() {
-  const navigate = useNavigate();
+const navigate = useNavigate();
 
-  const [keyword, setKeyword] = useState("");
-  const [lokasi, setLokasi] = useState("Semua Lokasi");
-  const [kategori, setKategori] = useState("Semua Kategori");
-  const [currentPage, setCurrentPage] = useState(1);
+const [searchParams] = useSearchParams();
+
+const [keyword, setKeyword] = useState("");
+const [lokasi, setLokasi] = useState("Semua Lokasi");
+const [kategori, setKategori] = useState("Semua Kategori");
+const [currentPage, setCurrentPage] = useState(1);
 
   const [jobs, setJobs] = useState([]);
   const [savedJobs, setSavedJobs] = useState([]);
@@ -39,13 +45,20 @@ export default function JobsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
+  useEffect(() => {
+  const q = searchParams.get("q") || "";
+
+  setKeyword(q);
+  setCurrentPage(1);
+}, [searchParams]);
+
   // ── FETCH JOBS FROM BACKEND ─────────────────────
   const fetchJobs = useCallback(async () => {
     try {
       setIsLoading(true);
       setErrorMsg("");
 
-      const params = new URLSearchParams();
+  const params = new URLSearchParams();
 
       params.append("page", currentPage);
       params.append("per_page", JOBS_PER_PAGE);
