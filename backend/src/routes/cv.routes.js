@@ -8,10 +8,13 @@ const router = express.Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 2 * 1024 * 1024,
+    fileSize: 2 * 1024 * 1024, // 2MB
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype !== "application/pdf") {
+    const isPdfMime = file.mimetype === "application/pdf";
+    const isPdfExt = file.originalname.toLowerCase().endsWith(".pdf");
+
+    if (!isPdfMime || !isPdfExt) {
       return cb(new Error("File harus berformat PDF dan maksimal 2MB"));
     }
 
@@ -19,10 +22,40 @@ const upload = multer({
   },
 });
 
+const handleCvUpload = (req, res, next) => {
+  upload.single("cv_file")(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      if (err.code === "LIMIT_FILE_SIZE") {
+        return res.status(400).json({
+          success: false,
+          message: "Ukuran file CV maksimal 2MB.",
+          data: null,
+        });
+      }
+
+      return res.status(400).json({
+        success: false,
+        message: err.message,
+        data: null,
+      });
+    }
+
+    if (err) {
+      return res.status(400).json({
+        success: false,
+        message: err.message || "File CV tidak valid.",
+        data: null,
+      });
+    }
+
+    next();
+  });
+};
+
 router.post(
   "/cv/analyze",
   authenticateUser,
-  upload.single("cv_file"),
+  handleCvUpload,
   cvController.analyzeCv
 );
 

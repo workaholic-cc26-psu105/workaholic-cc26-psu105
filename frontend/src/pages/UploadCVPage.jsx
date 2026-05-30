@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiRequest } from "../services/api";
 
 import {
   Upload,
@@ -11,50 +12,44 @@ import {
   X,
 } from "lucide-react";
 
+const validateFile = (selected) => {
+  if (!selected) {
+    return "File tidak ditemukan.";
+  }
+
+  if (selected.type !== "application/pdf") {
+    return "CV wajib format PDF.";
+  }
+
+  if (selected.size > 2 * 1024 * 1024) {
+    return "Ukuran file maksimal 2MB.";
+  }
+
+  return "";
+};
+
+const normalizeJobId = (id) => {
+  if (typeof id === "string" && id.length > 10 && id.includes("-")) {
+    return id;
+  }
+
+  return null;
+};
+
 export default function UploadCVPage() {
   const navigate = useNavigate();
 
   const [file, setFile] = useState(null);
   const [error, setError] = useState("");
-  const [isDragging, setIsDragging] =
-    useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const [isLoading, setIsLoading] =
-    useState(false);
-
-  // MODAL TEMPLATE
-  const [showTemplate, setShowTemplate] =
-    useState(false);
+  const [showTemplate, setShowTemplate] = useState(false);
 
   const inputRef = useRef(null);
 
-  // VALIDASI FILE
-  const validateFile = (selected) => {
-    if (!selected)
-      return "File tidak ditemukan.";
-
-    if (
-      selected.type !== "application/pdf"
-    ) {
-      return "CV wajib format PDF.";
-    }
-
-    if (
-      selected.size >
-      2 * 1024 * 1024
-    ) {
-      return "Ukuran file maksimal 2MB.";
-    }
-
-    return "";
-  };
-
-  // PILIH FILE
-  const handleFileSelect = (
-    selected
-  ) => {
-    const validation =
-      validateFile(selected);
+  const handleFileSelect = useCallback((selected) => {
+    const validation = validateFile(selected);
 
     if (validation) {
       setError(validation);
@@ -63,173 +58,149 @@ export default function UploadCVPage() {
 
     setError("");
     setFile(selected);
-  };
+  }, []);
 
-  // DRAG
-  const handleDragOver =
-    useCallback((e) => {
-      e.preventDefault();
-      setIsDragging(true);
-    }, []);
+  const handleDragOver = useCallback((e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
 
-  const handleDragLeave =
-    useCallback((e) => {
-      e.preventDefault();
-      setIsDragging(false);
-    }, []);
+  const handleDragLeave = useCallback((e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
 
   const handleDrop = useCallback(
     (e) => {
       e.preventDefault();
-
       setIsDragging(false);
 
-      const dropped =
-        e.dataTransfer.files?.[0];
+      const dropped = e.dataTransfer.files?.[0];
 
       if (dropped) {
         handleFileSelect(dropped);
       }
     },
-    []
+    [handleFileSelect]
   );
 
-  // ANALISIS
-  const handleAnalisis = () => {
+  const handleAnalisis = async () => {
     if (!file) {
-      setError(
-        "Silakan upload CV terlebih dahulu."
-      );
+      setError("Silakan upload CV terlebih dahulu.");
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      navigate("/login");
       return;
     }
 
     setIsLoading(true);
+    setError("");
 
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const formData = new FormData();
+      formData.append("cv_file", file);
 
-      // DATA HASIL ANALISIS
-      const newAnalysis = {
-        id: Date.now(),
-        fileName: file.name,
-        date:
-          new Date().toLocaleDateString(
-            "id-ID"
-          ),
+      const result = await apiRequest("/cv/analyze", {
+        method: "POST",
+        body: formData,
+      });
 
-        ats: `${
-          Math.floor(
-            Math.random() * 20
-          ) + 75
-        }%`,
+      const analysis = result?.data || result;
 
-        atsScore: `${
-          Math.floor(
-            Math.random() * 20
-          ) + 75
-        }%`,
+      if (!analysis) {
+        throw new Error("Response analisis CV tidak valid.");
+      }
 
-        category:
-          "Frontend Developer",
-
-        skor:
-          Math.floor(
-            Math.random() * 20
-          ) + 75,
-
-        kecocokanUtama:
-          "Frontend Developer",
-
-        kisaranGaji:
-          "Rp 4.000.000 – Rp 8.000.000 / bulan",
-
-        skills: [
-          "HTML",
-          "CSS",
-          "JavaScript",
-          "React",
-          "Tailwind CSS",
-        ],
-
-        kategori: [
-          "Frontend Developer",
-          "UI/UX Designer",
-          "Web Developer",
-        ],
-
-        saran: [
-          "Pelajari React Hooks lebih lanjut",
-          "Tingkatkan skill API Integration",
-          "Tambahkan project portfolio modern",
-          "Pelajari TypeScript untuk peluang lebih besar",
-        ],
-
-        rekomendasi: [
-          {
-            id: 1,
-            judul:
-              "Frontend Developer",
+      const normalizedRecommendations = Array.isArray(analysis?.rekomendasi)
+        ? analysis.rekomendasi.map((job) => ({
+            id: normalizeJobId(job.id),
+            judul: job.judul || job.jobTitle || job.title || "-",
             perusahaan:
-              "PT Digital Kreatif",
-            lokasi: "Jakarta",
-            tipe: "Full-time",
-            gaji: "Rp 5jt – 8jt",
-          },
+              job.perusahaan || job.companyName || job.company || "-",
+            lokasi: job.lokasi || job.locations || job.location || "-",
+            tipe: job.tipe || job.employment || job.type || "-",
+            gaji:
+              job.gaji ||
+              job.salary_range ||
+              job.salaryRange ||
+              job.salary ||
+              "Tidak tersedia",
+          }))
+        : [];
 
-          {
-            id: 2,
-            judul:
-              "UI/UX Designer",
-            perusahaan:
-              "Startup Inovasi",
-            lokasi: "Remote",
-            tipe: "Remote",
-            gaji: "Rp 4jt – 7jt",
-          },
+      const normalizedAnalysis = {
+        ...analysis,
 
-          {
-            id: 3,
-            judul:
-              "Web Developer",
-            perusahaan:
-              "CV Teknologi Nusantara",
-            lokasi: "Bandung",
-            tipe: "Full-time",
-            gaji: "Rp 4jt – 6jt",
-          },
-        ],
+        id: analysis?.id || null,
+        file_name: analysis?.file_name || file.name,
+        date: analysis?.date || "Baru saja",
+        ats_score: analysis?.ats_score || 0,
+        kecocokan_utama: analysis?.kecocokan_utama || "-",
+        kisaran_gaji: analysis?.kisaran_gaji || "-",
+
+        skills: Array.isArray(analysis?.skills) ? analysis.skills : [],
+
+        kategori: Array.isArray(analysis?.kategori) ? analysis.kategori : [],
+
+        saran: Array.isArray(analysis?.saran)
+          ? analysis.saran
+          : analysis?.saran
+          ? [analysis.saran]
+          : [],
+
+        rekomendasi: normalizedRecommendations,
+
+        fileName: analysis?.file_name || file.name,
+        skor: analysis?.ats_score || 0,
+        ats: `${analysis?.ats_score || 0}%`,
+        atsScore: `${analysis?.ats_score || 0}%`,
+        category: analysis?.kecocokan_utama || "-",
+        kecocokanUtama: analysis?.kecocokan_utama || "-",
+        kisaranGaji: analysis?.kisaran_gaji || "-",
       };
 
-      // AMBIL DATA LAMA
-      const existingAnalysis =
-        JSON.parse(
-          localStorage.getItem(
-            "cvAnalysisHistory"
-          )
-        ) || [];
+      localStorage.setItem(
+        "selectedCVReview",
+        JSON.stringify(normalizedAnalysis)
+      );
 
-      // SIMPAN DATA BARU
+      localStorage.setItem(
+        "cvAnalysisResult",
+        JSON.stringify(normalizedAnalysis)
+      );
+
+      const oldHistory = JSON.parse(
+        localStorage.getItem("cvAnalysisHistory") || "[]"
+      );
+
       localStorage.setItem(
         "cvAnalysisHistory",
-        JSON.stringify([
-          newAnalysis,
-          ...existingAnalysis,
-        ])
+        JSON.stringify([normalizedAnalysis, ...oldHistory])
       );
 
-      // STATUS SUDAH ANALISIS
-      localStorage.setItem(
-        "hasAnalysis",
-        "true"
-      );
+      localStorage.setItem("hasAnalysis", "true");
 
-      navigate("/review");
-    }, 2500);
+      window.dispatchEvent(new Event("profileUpdated"));
+
+      navigate("/review", {
+        state: {
+          analysis: normalizedAnalysis,
+        },
+      });
+    } catch (error) {
+      setError(error.message || "Gagal menganalisis CV.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <>
-      <div className="min-h-screen bg-[#F7F7F7] px-4 md:px-6 py-6 md:py-10">
+      <div className="min-h-screen bg-[#F7F7F7] px-6 py-10">
         <div className="max-w-5xl mx-auto">
           {/* HEADER */}
           <div className="mb-10 text-center flex flex-col items-center">
@@ -238,15 +209,13 @@ export default function UploadCVPage() {
               AI CV Analyzer
             </div>
 
-            <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight">
+            <h1 className="text-4xl font-extrabold text-gray-900 leading-tight">
               Upload CV
             </h1>
 
             <p className="text-gray-500 mt-4 max-w-2xl leading-relaxed mx-auto">
-              Upload CV ATS Friendly agar AI
-              dapat membaca dan
-              menganalisis data secara lebih
-              akurat
+              Upload CV ATS Friendly agar AI dapat membaca dan menganalisis data
+              secara lebih akurat
             </p>
           </div>
 
@@ -264,24 +233,16 @@ export default function UploadCVPage() {
                     Upload CV
                   </h2>
 
-                  <p className="text-sm text-gray-400">
-                    PDF ATS Friendly
-                  </p>
+                  <p className="text-sm text-gray-400">PDF ATS Friendly</p>
                 </div>
               </div>
 
               {/* UPLOAD BOX */}
               <div
-                onDragOver={
-                  handleDragOver
-                }
-                onDragLeave={
-                  handleDragLeave
-                }
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                onClick={() =>
-                  inputRef.current?.click()
-                }
+                onClick={() => inputRef.current?.click()}
                 className={`
                   border-2 border-dashed rounded-[28px]
                   p-10 text-center cursor-pointer transition-all
@@ -293,10 +254,7 @@ export default function UploadCVPage() {
                 `}
               >
                 <div className="w-20 h-20 rounded-3xl bg-[#FDF2F2] flex items-center justify-center mx-auto mb-5">
-                  <FileText
-                    size={34}
-                    className="text-[#8B1A1A]"
-                  />
+                  <FileText size={34} className="text-[#8B1A1A]" />
                 </div>
 
                 {!file ? (
@@ -306,13 +264,11 @@ export default function UploadCVPage() {
                     </h3>
 
                     <p className="text-sm text-gray-500 mt-2">
-                      atau klik untuk upload
-                      file PDF
+                      atau klik untuk upload file PDF
                     </p>
 
                     <p className="text-xs text-gray-400 mt-5">
-                      Maksimal ukuran file
-                      2MB
+                      Maksimal ukuran file 2MB
                     </p>
                   </>
                 ) : (
@@ -320,9 +276,7 @@ export default function UploadCVPage() {
                     <div className="flex items-center justify-center gap-2 text-green-600 mb-2">
                       <CheckCircle2 size={20} />
 
-                      <span className="font-bold">
-                        CV berhasil dipilih
-                      </span>
+                      <span className="font-bold">CV berhasil dipilih</span>
                     </div>
 
                     <p className="font-semibold text-gray-800 break-all">
@@ -330,12 +284,7 @@ export default function UploadCVPage() {
                     </p>
 
                     <p className="text-xs text-gray-400 mt-2">
-                      {(
-                        file.size /
-                        1024 /
-                        1024
-                      ).toFixed(2)}{" "}
-                      MB
+                      {(file.size / 1024 / 1024).toFixed(2)} MB
                     </p>
                   </>
                 )}
@@ -346,13 +295,10 @@ export default function UploadCVPage() {
                   accept=".pdf"
                   className="hidden"
                   onChange={(e) => {
-                    const selected =
-                      e.target.files?.[0];
+                    const selected = e.target.files?.[0];
 
                     if (selected) {
-                      handleFileSelect(
-                        selected
-                      );
+                      handleFileSelect(selected);
                     }
 
                     e.target.value = "";
@@ -363,23 +309,16 @@ export default function UploadCVPage() {
               {/* ERROR */}
               {error && (
                 <div className="mt-5 flex items-start gap-3 bg-red-50 border border-red-100 rounded-2xl p-4">
-                  <AlertTriangle
-                    size={18}
-                    className="text-red-500 mt-0.5"
-                  />
+                  <AlertTriangle size={18} className="text-red-500 mt-0.5" />
 
-                  <p className="text-sm font-medium text-red-600">
-                    {error}
-                  </p>
+                  <p className="text-sm font-medium text-red-600">{error}</p>
                 </div>
               )}
 
               {/* BUTTON */}
               <button
                 onClick={handleAnalisis}
-                disabled={
-                  !file || isLoading
-                }
+                disabled={!file || isLoading}
                 className={`
                   w-full mt-6 py-4 rounded-2xl font-bold transition-all
                   ${
@@ -389,9 +328,7 @@ export default function UploadCVPage() {
                   }
                 `}
               >
-                {isLoading
-                  ? "Menganalisis CV..."
-                  : "Analisis CV"}
+                {isLoading ? "Menganalisis CV..." : "Analisis CV"}
               </button>
             </div>
 
@@ -410,8 +347,7 @@ export default function UploadCVPage() {
                     </h2>
 
                     <p className="text-sm text-gray-400">
-                      Agar AI membaca lebih
-                      akurat
+                      Agar AI membaca lebih akurat
                     </p>
                   </div>
                 </div>
@@ -425,13 +361,10 @@ export default function UploadCVPage() {
                     "Pastikan teks dapat dibaca sistem",
                     "Gunakan PDF berbasis teks, bukan hasil konversi gambar atau scan",
                   ].map((item) => (
-                    <div
-                      key={item}
-                      className="flex items-start gap-3"
-                    >
+                    <div key={item} className="flex items-start gap-3">
                       <CheckCircle2
                         size={18}
-                        className="text-green-600 shrink-0 mt-1"
+                        className="text-green-600 mt-0.5"
                       />
 
                       <p className="text-sm text-gray-700 leading-relaxed">
@@ -449,16 +382,12 @@ export default function UploadCVPage() {
                 </h2>
 
                 <p className="text-white/80 text-sm mt-3 leading-relaxed">
-                  Gunakan template CV ATS
-                  Friendly agar peluang lolos
-                  screening recruiter lebih
-                  besar
+                  Gunakan template CV ATS Friendly agar peluang lolos screening
+                  recruiter lebih besar
                 </p>
 
                 <button
-                  onClick={() =>
-                    setShowTemplate(true)
-                  }
+                  onClick={() => setShowTemplate(true)}
                   className="mt-6 bg-white text-[#8B1A1A] px-6 py-3 rounded-2xl font-bold text-sm hover:scale-[1.02] transition-all"
                 >
                   Download Template CV
@@ -497,15 +426,11 @@ export default function UploadCVPage() {
             p-5
           "
         >
-          {/* CLOSE AREA */}
           <div
             className="absolute inset-0"
-            onClick={() =>
-              setShowTemplate(false)
-            }
+            onClick={() => setShowTemplate(false)}
           />
 
-          {/* CONTENT */}
           <div
             className="
               relative z-10
@@ -518,11 +443,8 @@ export default function UploadCVPage() {
               animate-in fade-in zoom-in
             "
           >
-            {/* CLOSE BUTTON */}
             <button
-              onClick={() =>
-                setShowTemplate(false)
-              }
+              onClick={() => setShowTemplate(false)}
               className="
                 absolute top-5 right-5
                 w-11 h-11
@@ -540,10 +462,8 @@ export default function UploadCVPage() {
               <h2 className="text-2xl font-extrabold text-gray-900">
                 Template CV ATS Friendly
               </h2>
-
             </div>
 
-            {/* IMAGE TEMPLATE */}
             <div className="rounded-[24px] overflow-hidden border border-gray-200 max-h-[75vh] overflow-y-auto">
               <img
                 src="/template-cv-ats.jpg"
