@@ -11,26 +11,32 @@ const DEFAULT_USER = {
   avatar: "https://i.pravatar.cc/300?img=12",
 };
 
-const DEFAULT_NOTIFICATIONS = [
-  {
-    id: 1,
-    title: "CV berhasil dianalisis",
-    time: "Baru saja",
-    read: false,
-  },
-  {
-    id: 2,
-    title: "3 lowongan baru cocok untukmu",
-    time: "10 menit lalu",
-    read: false,
-  },
-  {
-    id: 3,
-    title: "Profile berhasil diperbarui",
-    time: "1 jam lalu",
-    read: true,
-  },
+const DUMMY_NOTIFICATION_TITLES = [
+  "CV berhasil dianalisis",
+  "3 lowongan baru cocok untukmu",
+  "Profile berhasil diperbarui",
 ];
+
+const safeJsonParse = (value, fallback = []) => {
+  try {
+    return value ? JSON.parse(value) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const getRealNotifications = () => {
+  const savedNotif = localStorage.getItem("notifications");
+  const parsedNotif = safeJsonParse(savedNotif, []);
+
+  if (!Array.isArray(parsedNotif)) {
+    return [];
+  }
+
+  return parsedNotif.filter(
+    (notif) => !DUMMY_NOTIFICATION_TITLES.includes(notif.title)
+  );
+};
 
 export default function Topbar() {
   const navigate = useNavigate();
@@ -39,17 +45,14 @@ export default function Topbar() {
   const [user, setUser] = useState(DEFAULT_USER);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [showNotif, setShowNotif] = useState(false);
+  const [notifications, setNotifications] = useState([]);
 
-  const [notifications, setNotifications] = useState(() => {
-    const savedNotif = localStorage.getItem("notifications");
+  const loadNotifications = useCallback(() => {
+    const realNotifications = getRealNotifications();
 
-    if (savedNotif) {
-      return JSON.parse(savedNotif);
-    }
-
-    localStorage.setItem("notifications", JSON.stringify(DEFAULT_NOTIFICATIONS));
-    return DEFAULT_NOTIFICATIONS;
-  });
+    setNotifications(realNotifications);
+    localStorage.setItem("notifications", JSON.stringify(realNotifications));
+  }, []);
 
   const loadProfile = useCallback(async () => {
     const savedUser = localStorage.getItem("userProfile");
@@ -83,15 +86,18 @@ export default function Topbar() {
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       loadProfile();
+      loadNotifications();
     }, 0);
 
     window.addEventListener("profileUpdated", loadProfile);
+    window.addEventListener("notificationsUpdated", loadNotifications);
 
     return () => {
       clearTimeout(timeoutId);
       window.removeEventListener("profileUpdated", loadProfile);
+      window.removeEventListener("notificationsUpdated", loadNotifications);
     };
-  }, [loadProfile]);
+  }, [loadProfile, loadNotifications]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -134,6 +140,12 @@ export default function Topbar() {
     navigate(`/jobs?q=${encodeURIComponent(keyword)}`);
   };
 
+  const handleSearch = (e) => {
+    if (e.key === "Enter" && searchKeyword.trim()) {
+      navigate(`/jobs?q=${encodeURIComponent(searchKeyword.trim())}`);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -143,19 +155,6 @@ export default function Topbar() {
 
     navigate("/login");
   };
-
-  const handleSearch = (e) => {
-  if (
-    e.key === "Enter" &&
-    searchKeyword.trim()
-  ) {
-    navigate(
-      `/jobs?q=${encodeURIComponent(
-        searchKeyword
-      )}`
-    );
-  }
-};
 
   return (
     <header className="h-20 bg-white border-b border-gray-100 px-6 flex items-center justify-between">
@@ -208,7 +207,7 @@ export default function Topbar() {
                     <Bell size={36} className="mx-auto text-gray-300 mb-3" />
 
                     <p className="text-sm text-gray-400">
-                      Tidak ada notifikasi
+                      Belum ada notifikasi
                     </p>
                   </div>
                 ) : (

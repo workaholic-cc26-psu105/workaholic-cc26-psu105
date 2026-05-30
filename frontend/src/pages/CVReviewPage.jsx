@@ -486,18 +486,18 @@ export default function CVReviewPage() {
             </div>
 
             <div className="flex flex-col gap-3">
-              {result.rekomendasi?.length > 0 ? (
-                result.rekomendasi.map((job, index) => (
-                  <RekomJob
-                    key={job.id || `${job.judul}-${index}`}
-                    job={job}
-                  />
-                ))
-              ) : (
-                <p className="text-sm text-gray-400">
-                  Belum ada rekomendasi pekerjaan.
-                </p>
-              )}
+            {result.rekomendasi?.length > 0 ? (
+              result.rekomendasi.map((job, index) => (
+                <RekomJob
+                  key={`${job.id || job.judul || "job"}-${index}`}
+                  job={job}
+                />
+              ))
+            ) : (
+              <p className="text-sm text-gray-400">
+                Belum ada rekomendasi pekerjaan.
+              </p>
+            )}
             </div>
           </div>
         </div>

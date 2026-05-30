@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { apiRequest } from "../services/api";
+import { addNotification } from "../utils/notification";
 
 import {
   Search,
@@ -220,12 +221,22 @@ export default function JobsPage() {
       return;
     }
 
+    const wasSaved = savedJobs.some(
+      (item) => getSavedJobId(item) === job.id
+    );
+
     try {
       setIsSaving(job.id);
 
       await apiRequest(`/user/saved-jobs/${job.id}`, {
         method: "POST",
       });
+
+      addNotification(
+        wasSaved
+          ? "Lowongan dihapus dari tersimpan"
+          : "Lowongan berhasil disimpan"
+      );
 
       await fetchSavedJobs();
     } catch (error) {

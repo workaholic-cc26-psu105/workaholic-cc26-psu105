@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../services/api";
+import { addNotification } from "../utils/notification";
 
 import {
   Upload,
@@ -43,7 +44,6 @@ export default function UploadCVPage() {
   const [error, setError] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
   const [showTemplate, setShowTemplate] = useState(false);
 
   const inputRef = useRef(null);
@@ -119,8 +119,7 @@ export default function UploadCVPage() {
         ? analysis.rekomendasi.map((job) => ({
             id: normalizeJobId(job.id),
             judul: job.judul || job.jobTitle || job.title || "-",
-            perusahaan:
-              job.perusahaan || job.companyName || job.company || "-",
+            perusahaan: job.perusahaan || job.companyName || job.company || "-",
             lokasi: job.lokasi || job.locations || job.location || "-",
             tipe: job.tipe || job.employment || job.type || "-",
             gaji:
@@ -185,6 +184,8 @@ export default function UploadCVPage() {
       localStorage.setItem("hasAnalysis", "true");
 
       window.dispatchEvent(new Event("profileUpdated"));
+
+      addNotification("CV berhasil diupload dan dianalisis");
 
       navigate("/review", {
         state: {

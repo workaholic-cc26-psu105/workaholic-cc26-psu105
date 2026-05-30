@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { addNotification } from "../utils/notification";
 
 import {
   Bookmark,
@@ -55,6 +56,8 @@ export default function SavedPage() {
       await apiRequest(`/user/saved-jobs/${id}`, {
         method: "DELETE",
       });
+
+      addNotification("Lowongan dihapus dari tersimpan");
 
       setSavedJobs((prev) => prev.filter((job) => job.id !== id));
     } catch (error) {
