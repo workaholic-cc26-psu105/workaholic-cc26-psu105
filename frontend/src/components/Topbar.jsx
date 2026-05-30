@@ -131,7 +131,7 @@ export default function Topbar() {
       return;
     }
 
-    navigate(`/jobs?keyword=${encodeURIComponent(keyword)}`);
+    navigate(`/jobs?q=${encodeURIComponent(keyword)}`);
   };
 
   const handleLogout = () => {
@@ -143,6 +143,19 @@ export default function Topbar() {
 
     navigate("/login");
   };
+
+  const handleSearch = (e) => {
+  if (
+    e.key === "Enter" &&
+    searchKeyword.trim()
+  ) {
+    navigate(
+      `/jobs?q=${encodeURIComponent(
+        searchKeyword
+      )}`
+    );
+  }
+};
 
   return (
     <header className="h-20 bg-white border-b border-gray-100 px-6 flex items-center justify-between">
@@ -157,6 +170,7 @@ export default function Topbar() {
           type="text"
           value={searchKeyword}
           onChange={(e) => setSearchKeyword(e.target.value)}
+          onKeyDown={handleSearch}
           placeholder="Cari pekerjaan..."
           className="bg-transparent outline-none text-sm w-full"
         />
