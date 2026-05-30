@@ -1,86 +1,129 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useMemo } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 
 // ── DEFAULT RESULT ─────────────────────────────────────
 const DEFAULT_RESULT = {
-  fileName: "CV_Gravidya.pdf",
+  fileName: "CV kamu",
   date: "Baru saja",
 
-  kecocokanUtama: "Frontend Developer",
+  kecocokanUtama: "Belum ada hasil",
 
-  kisaranGaji:
-    "Rp 4.000.000 – Rp 8.000.000 / bulan",
+  kisaranGaji: "-",
 
-  skor: 82,
+  skor: 0,
 
-  skills: [
-    "HTML",
-    "CSS",
-    "JavaScript",
-    "React",
-    "Tailwind CSS",
-  ],
+  skills: [],
 
-  kategori: [
-    "Frontend Developer",
-    "UI/UX Designer",
-    "Web Developer",
-  ],
+  kategori: [],
 
-  saran: [
-    "Pelajari React Hooks lebih lanjut",
-    "Tingkatkan skill API Integration",
-    "Tambahkan project portfolio modern",
-    "Pelajari TypeScript untuk peluang lebih besar",
-  ],
+  saran: [],
 
-  rekomendasi: [
-    {
-      id: 1,
-      judul: "Frontend Developer",
-      perusahaan: "PT Digital Kreatif",
-      lokasi: "Jakarta",
-      tipe: "Full-time",
-      gaji: "Rp 5jt – 8jt",
-    },
+  rekomendasi: [],
+};
 
-    {
-      id: 2,
-      judul: "UI/UX Designer",
-      perusahaan: "Startup Inovasi",
-      lokasi: "Remote",
-      tipe: "Remote",
-      gaji: "Rp 4jt – 7jt",
-    },
+// ── SAFE JSON PARSE ─────────────────────────────────────
+const safeJsonParse = (value, fallback = null) => {
+  try {
+    return value ? JSON.parse(value) : fallback;
+  } catch {
+    return fallback;
+  }
+};
 
-    {
-      id: 3,
-      judul: "Web Developer",
-      perusahaan: "CV Teknologi Nusantara",
-      lokasi: "Bandung",
-      tipe: "Full-time",
-      gaji: "Rp 4jt – 6jt",
-    },
-  ],
+// ── NORMALIZE BACKEND RESULT ────────────────────────────
+const normalizeResult = (data) => {
+  if (!data) return DEFAULT_RESULT;
+
+  const recommendations = data.rekomendasi || data.recommendations || [];
+
+  const skills = Array.isArray(data.skills)
+    ? data.skills
+    : Array.isArray(data.skills_detected)
+    ? data.skills_detected
+    : [];
+
+  const kategori = Array.isArray(data.kategori)
+    ? data.kategori
+    : Array.isArray(data.top3_categories)
+    ? data.top3_categories.map((item) => item.category)
+    : data.predicted_category
+    ? [data.predicted_category]
+    : data.kecocokan_utama
+    ? [data.kecocokan_utama]
+    : [];
+
+  const saran = Array.isArray(data.saran)
+    ? data.saran
+    : data.saran
+    ? [data.saran]
+    : [];
+
+  const skor =
+    Number(
+      data.skor ??
+        data.ats_score ??
+        data.atsScore ??
+        data.confidence_pct ??
+        data.confidence ??
+        0
+    ) || 0;
+
+  return {
+    fileName: data.fileName || data.file_name || data.filename || "CV kamu",
+    date: data.date || "Baru saja",
+
+    kecocokanUtama:
+      data.kecocokanUtama ||
+      data.kecocokan_utama ||
+      data.predicted_category ||
+      kategori[0] ||
+      "-",
+
+    kisaranGaji:
+      data.kisaranGaji ||
+      data.kisaran_gaji ||
+      data.salaryRange ||
+      data.salary_estimate?.salary_range ||
+      "-",
+
+    skor: Math.round(skor),
+
+    skills,
+
+    kategori,
+
+    saran,
+
+    rekomendasi: recommendations.map((job, index) => ({
+      id: job.id || null,
+      judul:
+        job.judul ||
+        job.jobTitle ||
+        job.title ||
+        `Rekomendasi ${index + 1}`,
+      perusahaan: job.perusahaan || job.companyName || job.company || "-",
+      lokasi: job.lokasi || job.locations || job.location || "-",
+      tipe: job.tipe || job.employment || job.type || "-",
+      gaji:
+        job.gaji ||
+        job.salary_range ||
+        job.salaryRange ||
+        "Tidak tersedia",
+    })),
+  };
 };
 
 // ── SKOR RING ─────────────────────────────────────
 function SkorRing({ skor }) {
   const radius = 28;
 
-  const circumference =
-    2 * Math.PI * radius;
+  const circumference = 2 * Math.PI * radius;
 
-  const offset =
-    circumference -
-    (skor / 100) * circumference;
+  const offset = circumference - (skor / 100) * circumference;
 
   return (
     <div className="relative w-16 h-16 flex items-center justify-center flex-shrink-0">
-      <svg
-        viewBox="0 0 72 72"
-        className="w-16 h-16 -rotate-90"
-      >
+      <svg viewBox="0 0 72 72" className="w-16 h-16 -rotate-90">
         <circle
           cx="36"
           cy="36"
@@ -114,11 +157,15 @@ function SkorRing({ skor }) {
 function RekomJob({ job }) {
   const navigate = useNavigate();
 
+  const handleClick = () => {
+    if (job.id) {
+      navigate(`/jobs/${job.id}`);
+    }
+  };
+
   return (
     <div
-      onClick={() =>
-        navigate(`/jobs/${job.id}`)
-      }
+      onClick={handleClick}
       className="
         bg-white
         rounded-2xl
@@ -141,9 +188,7 @@ function RekomJob({ job }) {
             {job.judul}
           </h4>
 
-          <p className="text-xs text-gray-500 mt-0.5">
-            {job.perusahaan}
-          </p>
+          <p className="text-xs text-gray-500 mt-0.5">{job.perusahaan}</p>
         </div>
 
         <svg
@@ -163,20 +208,14 @@ function RekomJob({ job }) {
 
       <div className="flex items-center justify-between mt-3">
         <div className="flex items-center gap-1 text-gray-400 text-[11px]">
-          <svg
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            className="w-3 h-3"
-          >
+          <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3">
             <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z" />
           </svg>
 
           {job.lokasi}
         </div>
 
-        <span className="text-xs font-bold text-[#8B1A1A]">
-          {job.gaji}
-        </span>
+        <span className="text-xs font-bold text-[#8B1A1A]">{job.gaji}</span>
       </div>
     </div>
   );
@@ -185,69 +224,41 @@ function RekomJob({ job }) {
 // ── MAIN PAGE ─────────────────────────────────────
 export default function CVReviewPage() {
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const [result, setResult] =
-    useState(DEFAULT_RESULT);
-
-  // ─────────────────────────────────────────────
-  // LOAD DATA
-  // ─────────────────────────────────────────────
-  useEffect(() => {
+  const result = useMemo(() => {
     try {
-      const history =
-        JSON.parse(
-          localStorage.getItem(
-            "cvAnalysisHistory"
-          )
-        ) || [];
+      const stateResult = location.state?.analysis || location.state?.result;
 
-      if (history.length > 0) {
-        const latest = history[0];
-
-        setResult({
-          ...DEFAULT_RESULT,
-          ...latest,
-
-          skills:
-            latest.skills ||
-            DEFAULT_RESULT.skills,
-
-          kategori:
-            latest.kategori ||
-            DEFAULT_RESULT.kategori,
-
-          saran:
-            latest.saran ||
-            DEFAULT_RESULT.saran,
-
-          rekomendasi:
-            latest.rekomendasi ||
-            DEFAULT_RESULT.rekomendasi,
-        });
-      }
-    } catch (error) {
-      console.log(
-        "Gagal load CV history:",
-        error
+      const savedResult = safeJsonParse(
+        localStorage.getItem("cvAnalysisResult")
       );
+
+      const history = safeJsonParse(
+        localStorage.getItem("cvAnalysisHistory"),
+        []
+      );
+
+      const latestHistory =
+        Array.isArray(history) && history.length > 0 ? history[0] : null;
+
+      const finalResult = stateResult || savedResult || latestHistory;
+
+      return finalResult ? normalizeResult(finalResult) : DEFAULT_RESULT;
+    } catch (error) {
+      console.log("Gagal load CV result:", error);
+      return DEFAULT_RESULT;
     }
-  }, []);
+  }, [location.state]);
 
   return (
     <div className="min-h-screen bg-[#F0F0F0] font-sans antialiased">
       <main className="max-w-5xl mx-auto w-full px-4 md:px-6 py-10 space-y-6">
-
         {/* HEADER */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-5 flex items-center gap-4">
-
           <div className="relative flex-shrink-0">
-
             <div className="w-12 h-12 rounded-xl bg-[#FDF2F2] flex items-center justify-center">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                className="w-6 h-6"
-              >
+              <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
                 <rect
                   x="4"
                   y="2"
@@ -268,11 +279,7 @@ export default function CVReviewPage() {
             </div>
 
             <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center border-2 border-white">
-              <svg
-                viewBox="0 0 12 12"
-                fill="none"
-                className="w-2.5 h-2.5"
-              >
+              <svg viewBox="0 0 12 12" fill="none" className="w-2.5 h-2.5">
                 <path
                   d="M2 6l2.5 2.5 5.5-5"
                   stroke="white"
@@ -282,11 +289,9 @@ export default function CVReviewPage() {
                 />
               </svg>
             </div>
-
           </div>
 
           <div>
-
             <h1 className="text-xl md:text-2xl font-extrabold text-[#8B1A1A] tracking-tight leading-tight">
               Hasil Analisis CV Kamu
             </h1>
@@ -294,13 +299,10 @@ export default function CVReviewPage() {
             <p className="text-xs text-gray-400 mt-0.5">
               {result.fileName} • {result.date}
             </p>
-
           </div>
 
           <button
-            onClick={() =>
-              navigate("/analysis")
-            }
+            onClick={() => navigate("/analysis")}
             className="
               ml-auto
               text-xs
@@ -316,20 +318,15 @@ export default function CVReviewPage() {
           >
             Upload Ulang CV
           </button>
-
         </div>
 
         {/* KECOCOKAN */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-5">
-
           <div className="flex flex-col sm:flex-row gap-6">
-
             <div className="flex items-center gap-4 flex-1">
-
               <SkorRing skor={result.skor} />
 
               <div>
-
                 <p className="text-xs text-gray-400 font-medium mb-0.5">
                   Kecocokan Utama
                 </p>
@@ -339,25 +336,16 @@ export default function CVReviewPage() {
                 </p>
 
                 <p className="text-xs text-green-600 font-semibold mt-0.5">
-                  Kesesuaian {result.skor}%
-                  dengan profilmu
+                  Kesesuaian {result.skor}% dengan profilmu
                 </p>
-
               </div>
-
             </div>
 
             <div className="hidden sm:block w-px bg-gray-100"></div>
 
             <div className="flex items-center gap-4 flex-1">
-
               <div className="w-12 h-12 rounded-xl bg-[#FDF2F2] flex items-center justify-center flex-shrink-0">
-
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  className="w-6 h-6"
-                >
+                <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
                   <rect
                     x="2"
                     y="6"
@@ -368,26 +356,13 @@ export default function CVReviewPage() {
                     strokeWidth="1.8"
                   />
 
-                  <path
-                    d="M2 10h20"
-                    stroke="#8B1A1A"
-                    strokeWidth="1.5"
-                  />
+                  <path d="M2 10h20" stroke="#8B1A1A" strokeWidth="1.5" />
 
-                  <circle
-                    cx="12"
-                    cy="15"
-                    r="2"
-                    fill="#8B1A1A"
-                    opacity=".5"
-                  />
-
+                  <circle cx="12" cy="15" r="2" fill="#8B1A1A" opacity=".5" />
                 </svg>
-
               </div>
 
               <div>
-
                 <p className="text-xs text-gray-400 font-medium mb-0.5">
                   Estimasi Kisaran Gaji
                 </p>
@@ -399,34 +374,26 @@ export default function CVReviewPage() {
                 <p className="text-xs text-gray-400 mt-0.5">
                   Berdasarkan data pasar 2026
                 </p>
-
               </div>
-
             </div>
-
           </div>
-
         </div>
 
         {/* GRID */}
         <div className="grid grid-cols-1 md:grid-cols-[1fr_1.8fr] gap-6">
-
           {/* LEFT */}
           <div className="flex flex-col gap-5">
-
             {/* SKILL */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-5">
-
               <h2 className="text-sm font-extrabold text-gray-900 mb-4">
                 Skill yang terdeteksi
               </h2>
 
               <div className="flex flex-wrap gap-2">
-
-                {result.skills?.map(
-                  (skill) => (
+                {result.skills?.length > 0 ? (
+                  result.skills.map((skill, index) => (
                     <div
-                      key={skill}
+                      key={`${skill}-${index}`}
                       className="
                         px-3 py-2
                         rounded-xl
@@ -437,26 +404,26 @@ export default function CVReviewPage() {
                     >
                       {skill}
                     </div>
-                  )
+                  ))
+                ) : (
+                  <p className="text-xs text-gray-400">
+                    Belum ada skill yang terdeteksi.
+                  </p>
                 )}
-
               </div>
-
             </div>
 
             {/* KATEGORI */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-5">
-
               <h2 className="text-sm font-extrabold text-gray-900 mb-4">
                 Kategori yang cocok
               </h2>
 
               <div className="flex flex-wrap gap-2">
-
-                {result.kategori?.map(
-                  (kat) => (
+                {result.kategori?.length > 0 ? (
+                  result.kategori.map((kat, index) => (
                     <div
-                      key={kat}
+                      key={`${kat}-${index}`}
                       className="
                         px-3 py-2
                         rounded-xl
@@ -467,78 +434,73 @@ export default function CVReviewPage() {
                     >
                       {kat}
                     </div>
-                  )
+                  ))
+                ) : (
+                  <p className="text-xs text-gray-400">
+                    Belum ada kategori yang cocok.
+                  </p>
                 )}
-
               </div>
-
             </div>
 
             {/* SARAN */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-5">
-
               <h2 className="text-sm font-extrabold text-gray-900 mb-4">
                 Saran Pengembangan Skill
               </h2>
 
               <div className="space-y-3">
-
-                {result.saran?.map(
-                  (item) => (
+                {result.saran?.length > 0 ? (
+                  result.saran.map((item, index) => (
                     <div
-                      key={item}
+                      key={`${item}-${index}`}
                       className="flex items-start gap-3 text-sm text-gray-700"
                     >
                       <div className="mt-1.5 w-2 h-2 rounded-full bg-[#8B1A1A]"></div>
 
                       <span>{item}</span>
                     </div>
-                  )
+                  ))
+                ) : (
+                  <p className="text-xs text-gray-400">
+                    Belum ada saran pengembangan skill.
+                  </p>
                 )}
-
               </div>
-
             </div>
-
           </div>
 
           {/* RIGHT */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-5">
-
             <div className="flex items-center justify-between mb-5">
-
               <h2 className="text-sm font-extrabold text-[#8B1A1A]">
                 Rekomendasi Pekerjaan
               </h2>
 
               <button
-                onClick={() =>
-                  navigate("/jobs")
-                }
+                onClick={() => navigate("/jobs")}
                 className="text-xs font-bold text-gray-400 hover:text-[#8B1A1A]"
               >
                 Lihat semua
               </button>
-
             </div>
 
             <div className="flex flex-col gap-3">
-
-              {result.rekomendasi?.map(
-                (job) => (
+              {result.rekomendasi?.length > 0 ? (
+                result.rekomendasi.map((job, index) => (
                   <RekomJob
-                    key={job.id}
+                    key={job.id || `${job.judul}-${index}`}
                     job={job}
                   />
-                )
+                ))
+              ) : (
+                <p className="text-sm text-gray-400">
+                  Belum ada rekomendasi pekerjaan.
+                </p>
               )}
-
             </div>
-
           </div>
-
         </div>
-
       </main>
     </div>
   );

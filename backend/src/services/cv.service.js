@@ -1,5 +1,5 @@
 const supabase = require("../config/supabase");
-const { DEV_USER_ID } = require("../config/devUser");
+const aiService = require("./ai.service");
 
 const USE_AI_MOCK = process.env.USE_AI_MOCK === "true";
 

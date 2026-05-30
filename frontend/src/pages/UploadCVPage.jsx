@@ -12,50 +12,38 @@ import {
   X,
 } from "lucide-react";
 
+const validateFile = (selected) => {
+  if (!selected) {
+    return "File tidak ditemukan.";
+  }
+
+  if (selected.type !== "application/pdf") {
+    return "CV wajib format PDF.";
+  }
+
+  if (selected.size > 2 * 1024 * 1024) {
+    return "Ukuran file maksimal 2MB.";
+  }
+
+  return "";
+};
+
 export default function UploadCVPage() {
   const navigate = useNavigate();
 
   const [file, setFile] = useState(null);
   const [error, setError] = useState("");
-  const [isDragging, setIsDragging] =
-    useState(false);
-
-  const [isLoading, setIsLoading] =
-    useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   // MODAL TEMPLATE
-  const [showTemplate, setShowTemplate] =
-    useState(false);
+  const [showTemplate, setShowTemplate] = useState(false);
 
   const inputRef = useRef(null);
 
-  // VALIDASI FILE
-  const validateFile = (selected) => {
-    if (!selected)
-      return "File tidak ditemukan.";
-
-    if (
-      selected.type !== "application/pdf"
-    ) {
-      return "CV wajib format PDF.";
-    }
-
-    if (
-      selected.size >
-      2 * 1024 * 1024
-    ) {
-      return "Ukuran file maksimal 2MB.";
-    }
-
-    return "";
-  };
-
   // PILIH FILE
-  const handleFileSelect = (
-    selected
-  ) => {
-    const validation =
-      validateFile(selected);
+  const handleFileSelect = useCallback((selected) => {
+    const validation = validateFile(selected);
 
     if (validation) {
       setError(validation);
@@ -64,106 +52,126 @@ export default function UploadCVPage() {
 
     setError("");
     setFile(selected);
-  };
+  }, []);
 
   // DRAG
-  const handleDragOver =
-    useCallback((e) => {
-      e.preventDefault();
-      setIsDragging(true);
-    }, []);
+  const handleDragOver = useCallback((e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
 
-  const handleDragLeave =
-    useCallback((e) => {
-      e.preventDefault();
-      setIsDragging(false);
-    }, []);
+  const handleDragLeave = useCallback((e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
 
   const handleDrop = useCallback(
     (e) => {
       e.preventDefault();
-
       setIsDragging(false);
 
-      const dropped =
-        e.dataTransfer.files?.[0];
+      const dropped = e.dataTransfer.files?.[0];
 
       if (dropped) {
         handleFileSelect(dropped);
       }
     },
-    []
+    [handleFileSelect]
   );
 
-// ANALISIS
-const handleAnalisis = async () => {
-  if (!file) {
-    setError("Silakan upload CV terlebih dahulu.");
-    return;
-  }
+  // ANALISIS
+  const handleAnalisis = async () => {
+    if (!file) {
+      setError("Silakan upload CV terlebih dahulu.");
+      return;
+    }
 
-  const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token");
 
-  if (!token) {
-    navigate("/login");
-    return;
-  }
+    if (!token) {
+      navigate("/login");
+      return;
+    }
 
-  setIsLoading(true);
-  setError("");
+    setIsLoading(true);
+    setError("");
 
-  try {
-    const formData = new FormData();
-    formData.append("cv_file", file);
+    try {
+      const formData = new FormData();
+      formData.append("cv_file", file);
 
-    const result = await apiRequest("/cv/analyze", {
-      method: "POST",
-      body: formData,
-    });
+      const result = await apiRequest("/cv/analyze", {
+        method: "POST",
+        body: formData,
+      });
 
-    const analysis = result.data;
+      const analysis = result?.data || result;
 
-    const normalizedAnalysis = {
-      ...analysis,
+      const normalizedAnalysis = {
+        ...analysis,
 
-      // field asli dari backend
-      id: analysis.id,
-      file_name: analysis.file_name,
-      date: analysis.date,
-      ats_score: analysis.ats_score,
-      kecocokan_utama: analysis.kecocokan_utama,
-      kisaran_gaji: analysis.kisaran_gaji,
-      skills: analysis.skills || [],
-      kategori: analysis.kategori || [],
-      saran: analysis.saran || [],
-      rekomendasi: analysis.rekomendasi || [],
+        // field asli dari backend
+        id: analysis?.id || null,
+        file_name: analysis?.file_name || file.name,
+        date: analysis?.date || "Baru saja",
+        ats_score: analysis?.ats_score || 0,
+        kecocokan_utama: analysis?.kecocokan_utama || "-",
+        kisaran_gaji: analysis?.kisaran_gaji || "-",
+        skills: Array.isArray(analysis?.skills) ? analysis.skills : [],
+        kategori: Array.isArray(analysis?.kategori) ? analysis.kategori : [],
+        saran: Array.isArray(analysis?.saran)
+          ? analysis.saran
+          : analysis?.saran
+          ? [analysis.saran]
+          : [],
+        rekomendasi: Array.isArray(analysis?.rekomendasi)
+          ? analysis.rekomendasi
+          : [],
 
-      // field tambahan agar halaman review lama tetap aman
-      fileName: analysis.file_name,
-      skor: analysis.ats_score,
-      ats: `${analysis.ats_score}%`,
-      atsScore: `${analysis.ats_score}%`,
-      category: analysis.kecocokan_utama,
-      kecocokanUtama: analysis.kecocokan_utama,
-      kisaranGaji: analysis.kisaran_gaji,
-    };
+        // field tambahan agar halaman review tetap aman
+        fileName: analysis?.file_name || file.name,
+        skor: analysis?.ats_score || 0,
+        ats: `${analysis?.ats_score || 0}%`,
+        atsScore: `${analysis?.ats_score || 0}%`,
+        category: analysis?.kecocokan_utama || "-",
+        kecocokanUtama: analysis?.kecocokan_utama || "-",
+        kisaranGaji: analysis?.kisaran_gaji || "-",
+      };
 
-    localStorage.setItem(
-      "selectedCVReview",
-      JSON.stringify(normalizedAnalysis)
-    );
+      localStorage.setItem(
+        "selectedCVReview",
+        JSON.stringify(normalizedAnalysis)
+      );
 
-    localStorage.setItem("hasAnalysis", "true");
+      localStorage.setItem(
+        "cvAnalysisResult",
+        JSON.stringify(normalizedAnalysis)
+      );
 
-    window.dispatchEvent(new Event("profileUpdated"));
+      const oldHistory = JSON.parse(
+        localStorage.getItem("cvAnalysisHistory") || "[]"
+      );
 
-    navigate("/review");
-  } catch (error) {
-    setError(error.message || "Gagal menganalisis CV.");
-  } finally {
-    setIsLoading(false);
-  }
-};
+      localStorage.setItem(
+        "cvAnalysisHistory",
+        JSON.stringify([normalizedAnalysis, ...oldHistory])
+      );
+
+      localStorage.setItem("hasAnalysis", "true");
+
+      window.dispatchEvent(new Event("profileUpdated"));
+
+      navigate("/review", {
+        state: {
+          analysis: normalizedAnalysis,
+        },
+      });
+    } catch (error) {
+      setError(error.message || "Gagal menganalisis CV.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <>
@@ -181,10 +189,8 @@ const handleAnalisis = async () => {
             </h1>
 
             <p className="text-gray-500 mt-4 max-w-2xl leading-relaxed mx-auto">
-              Upload CV ATS Friendly agar AI
-              dapat membaca dan
-              menganalisis data secara lebih
-              akurat
+              Upload CV ATS Friendly agar AI dapat membaca dan menganalisis data
+              secara lebih akurat
             </p>
           </div>
 
@@ -202,24 +208,16 @@ const handleAnalisis = async () => {
                     Upload CV
                   </h2>
 
-                  <p className="text-sm text-gray-400">
-                    PDF ATS Friendly
-                  </p>
+                  <p className="text-sm text-gray-400">PDF ATS Friendly</p>
                 </div>
               </div>
 
               {/* UPLOAD BOX */}
               <div
-                onDragOver={
-                  handleDragOver
-                }
-                onDragLeave={
-                  handleDragLeave
-                }
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                onClick={() =>
-                  inputRef.current?.click()
-                }
+                onClick={() => inputRef.current?.click()}
                 className={`
                   border-2 border-dashed rounded-[28px]
                   p-10 text-center cursor-pointer transition-all
@@ -231,10 +229,7 @@ const handleAnalisis = async () => {
                 `}
               >
                 <div className="w-20 h-20 rounded-3xl bg-[#FDF2F2] flex items-center justify-center mx-auto mb-5">
-                  <FileText
-                    size={34}
-                    className="text-[#8B1A1A]"
-                  />
+                  <FileText size={34} className="text-[#8B1A1A]" />
                 </div>
 
                 {!file ? (
@@ -244,13 +239,11 @@ const handleAnalisis = async () => {
                     </h3>
 
                     <p className="text-sm text-gray-500 mt-2">
-                      atau klik untuk upload
-                      file PDF
+                      atau klik untuk upload file PDF
                     </p>
 
                     <p className="text-xs text-gray-400 mt-5">
-                      Maksimal ukuran file
-                      2MB
+                      Maksimal ukuran file 2MB
                     </p>
                   </>
                 ) : (
@@ -258,9 +251,7 @@ const handleAnalisis = async () => {
                     <div className="flex items-center justify-center gap-2 text-green-600 mb-2">
                       <CheckCircle2 size={20} />
 
-                      <span className="font-bold">
-                        CV berhasil dipilih
-                      </span>
+                      <span className="font-bold">CV berhasil dipilih</span>
                     </div>
 
                     <p className="font-semibold text-gray-800 break-all">
@@ -268,12 +259,7 @@ const handleAnalisis = async () => {
                     </p>
 
                     <p className="text-xs text-gray-400 mt-2">
-                      {(
-                        file.size /
-                        1024 /
-                        1024
-                      ).toFixed(2)}{" "}
-                      MB
+                      {(file.size / 1024 / 1024).toFixed(2)} MB
                     </p>
                   </>
                 )}
@@ -284,13 +270,10 @@ const handleAnalisis = async () => {
                   accept=".pdf"
                   className="hidden"
                   onChange={(e) => {
-                    const selected =
-                      e.target.files?.[0];
+                    const selected = e.target.files?.[0];
 
                     if (selected) {
-                      handleFileSelect(
-                        selected
-                      );
+                      handleFileSelect(selected);
                     }
 
                     e.target.value = "";
@@ -301,23 +284,16 @@ const handleAnalisis = async () => {
               {/* ERROR */}
               {error && (
                 <div className="mt-5 flex items-start gap-3 bg-red-50 border border-red-100 rounded-2xl p-4">
-                  <AlertTriangle
-                    size={18}
-                    className="text-red-500 mt-0.5"
-                  />
+                  <AlertTriangle size={18} className="text-red-500 mt-0.5" />
 
-                  <p className="text-sm font-medium text-red-600">
-                    {error}
-                  </p>
+                  <p className="text-sm font-medium text-red-600">{error}</p>
                 </div>
               )}
 
               {/* BUTTON */}
               <button
                 onClick={handleAnalisis}
-                disabled={
-                  !file || isLoading
-                }
+                disabled={!file || isLoading}
                 className={`
                   w-full mt-6 py-4 rounded-2xl font-bold transition-all
                   ${
@@ -327,9 +303,7 @@ const handleAnalisis = async () => {
                   }
                 `}
               >
-                {isLoading
-                  ? "Menganalisis CV..."
-                  : "Analisis CV"}
+                {isLoading ? "Menganalisis CV..." : "Analisis CV"}
               </button>
             </div>
 
@@ -348,8 +322,7 @@ const handleAnalisis = async () => {
                     </h2>
 
                     <p className="text-sm text-gray-400">
-                      Agar AI membaca lebih
-                      akurat
+                      Agar AI membaca lebih akurat
                     </p>
                   </div>
                 </div>
@@ -363,10 +336,7 @@ const handleAnalisis = async () => {
                     "Pastikan teks dapat dibaca sistem",
                     "Gunakan PDF berbasis teks, bukan hasil konversi gambar atau scan",
                   ].map((item) => (
-                    <div
-                      key={item}
-                      className="flex items-start gap-3"
-                    >
+                    <div key={item} className="flex items-start gap-3">
                       <CheckCircle2
                         size={18}
                         className="text-green-600 mt-0.5"
@@ -387,16 +357,12 @@ const handleAnalisis = async () => {
                 </h2>
 
                 <p className="text-white/80 text-sm mt-3 leading-relaxed">
-                  Gunakan template CV ATS
-                  Friendly agar peluang lolos
-                  screening recruiter lebih
-                  besar
+                  Gunakan template CV ATS Friendly agar peluang lolos screening
+                  recruiter lebih besar
                 </p>
 
                 <button
-                  onClick={() =>
-                    setShowTemplate(true)
-                  }
+                  onClick={() => setShowTemplate(true)}
                   className="mt-6 bg-white text-[#8B1A1A] px-6 py-3 rounded-2xl font-bold text-sm hover:scale-[1.02] transition-all"
                 >
                   Download Template CV
@@ -436,12 +402,7 @@ const handleAnalisis = async () => {
           "
         >
           {/* CLOSE AREA */}
-          <div
-            className="absolute inset-0"
-            onClick={() =>
-              setShowTemplate(false)
-            }
-          />
+          <div className="absolute inset-0" onClick={() => setShowTemplate(false)} />
 
           {/* CONTENT */}
           <div
@@ -458,9 +419,7 @@ const handleAnalisis = async () => {
           >
             {/* CLOSE BUTTON */}
             <button
-              onClick={() =>
-                setShowTemplate(false)
-              }
+              onClick={() => setShowTemplate(false)}
               className="
                 absolute top-5 right-5
                 w-11 h-11
@@ -478,7 +437,6 @@ const handleAnalisis = async () => {
               <h2 className="text-2xl font-extrabold text-gray-900">
                 Template CV ATS Friendly
               </h2>
-
             </div>
 
             {/* IMAGE TEMPLATE */}
