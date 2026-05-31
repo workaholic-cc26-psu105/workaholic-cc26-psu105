@@ -92,7 +92,6 @@ export default function ProfilePage() {
 const loadProfile = useCallback(async () => {
   try {
     const savedUser = safeJsonParse(localStorage.getItem("userProfile"));
-    const savedAvatar = savedUser?.avatar;
 
     if (savedUser) {
       setUser(normalizeProfile(savedUser));
@@ -103,10 +102,7 @@ const loadProfile = useCallback(async () => {
 
     const mergedProfile = {
       ...apiProfile,
-      avatar:
-        savedAvatar && savedAvatar !== DEFAULT_USER.avatar
-          ? savedAvatar
-          : apiProfile.avatar || DEFAULT_USER.avatar,
+      avatar: apiProfile.avatar || savedUser?.avatar || DEFAULT_USER.avatar,
     };
 
     setUser(mergedProfile);
@@ -159,61 +155,78 @@ const loadProfile = useCallback(async () => {
     }));
   };
 
-  const handlePhotoChange = async (e) => {
-    const file = e.target.files?.[0];
+const handlePhotoChange = async (e) => {
+  const file = e.target.files?.[0];
 
-    if (!file) return;
+  if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
-      alert("File avatar harus berupa gambar.");
-      e.target.value = "";
-      return;
-    }
+  if (!file.type.startsWith("image/")) {
+    alert("File avatar harus berupa gambar.");
+    e.target.value = "";
+    return;
+  }
 
-    if (file.size > 2 * 1024 * 1024) {
-      alert("Ukuran gambar maksimal 2MB.");
-      e.target.value = "";
-      return;
-    }
+  if (file.size > 2 * 1024 * 1024) {
+    alert("Ukuran gambar maksimal 2MB.");
+    e.target.value = "";
+    return;
+  }
 
-    try {
-      setIsUploadingAvatar(true);
+  try {
+    setIsUploadingAvatar(true);
 
-      const avatarBase64 = await fileToBase64(file);
+    const avatarBase64 = await fileToBase64(file);
 
-      const updatedProfile = {
-        ...user,
-        avatar: avatarBase64,
-      };
+    const updatedProfile = {
+      ...user,
+      avatar: avatarBase64,
+    };
 
-      setUser(updatedProfile);
-      localStorage.setItem("userProfile", JSON.stringify(updatedProfile));
+    setUser(updatedProfile);
+    localStorage.setItem("userProfile", JSON.stringify(updatedProfile));
 
-      window.dispatchEvent(new Event("profileUpdated"));
-      addNotification("Avatar profil berhasil diperbarui");
+    await apiRequest("/user/profile", {
+      method: "PUT",
+      body: JSON.stringify({
+        nama: updatedProfile.nama,
+        phone: updatedProfile.phone,
+        location: updatedProfile.location,
+        role: updatedProfile.role,
+        education: updatedProfile.education,
+        bio: updatedProfile.bio,
+        skills: updatedProfile.skills,
+        avatar: updatedProfile.avatar,
+      }),
+    });
 
-      alert("Avatar profil berhasil diperbarui");
-    } catch {
-      alert("Gagal memperbarui avatar profil.");
-    } finally {
-      setIsUploadingAvatar(false);
-      e.target.value = "";
-    }
-  };
+    window.dispatchEvent(new Event("profileUpdated"));
+    addNotification("Avatar profil berhasil diperbarui");
+
+    alert("Avatar profil berhasil diperbarui");
+  } catch (error) {
+    alert(error.message || "Gagal memperbarui avatar profil.");
+
+    await loadProfile();
+  } finally {
+    setIsUploadingAvatar(false);
+    e.target.value = "";
+  }
+};
 
   const handleSave = async () => {
     try {
       setIsSaving(true);
 
-      const payload = {
-        nama: user.nama,
-        phone: user.phone,
-        location: user.location,
-        role: user.role,
-        education: user.education,
-        bio: user.bio,
-        skills: user.skills,
-      };
+  const payload = {
+    nama: user.nama,
+    phone: user.phone,
+    location: user.location,
+    role: user.role,
+    education: user.education,
+    bio: user.bio,
+    skills: user.skills,
+    avatar: user.avatar,
+  };
 
       const result = await apiRequest("/user/profile", {
         method: "PUT",
