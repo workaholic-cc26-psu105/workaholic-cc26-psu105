@@ -23,6 +23,71 @@ const POPULAR_SEARCH = [
   "AI Engineer",
 ];
 
+const LOKASI_OPTIONS = [
+  "Semua Lokasi",
+  "Remote",
+  "Jakarta",
+  "Jakarta Barat",
+  "Jakarta Pusat",
+  "Jakarta Selatan",
+  "Jakarta Timur",
+  "Jakarta Utara",
+  "Bogor",
+  "Depok",
+  "Tangerang",
+  "Tangerang Selatan",
+  "Bekasi",
+  "Bandung",
+  "Semarang",
+  "Yogyakarta",
+  "Surakarta",
+  "Surabaya",
+  "Malang",
+  "Sidoarjo",
+  "Denpasar",
+  "Bali",
+  "Medan",
+  "Palembang",
+  "Pekanbaru",
+  "Batam",
+  "Padang",
+  "Bandar Lampung",
+  "Banjarmasin",
+  "Balikpapan",
+  "Samarinda",
+  "Pontianak",
+  "Makassar",
+  "Manado",
+  "Mataram",
+];
+
+const KATEGORI_OPTIONS = [
+  "Semua Kategori",
+  "Data",
+  "IT",
+  "Design",
+  "Marketing",
+  "Sales",
+  "Finance",
+  "Accounting",
+  "Human Resource",
+  "Customer Service",
+  "Administration",
+  "Operations",
+  "Engineering",
+  "Education",
+  "Healthcare",
+  "Media",
+  "Creative",
+  "Product",
+  "Business Development",
+  "Software Development",
+  "Quality Assurance",
+  "Cybersecurity",
+  "Cloud Computing",
+  "Project Management",
+];
+
 const normalizeJob = (job, index) => {
   return {
     id: job.id || job.job_id || job.jobId || `job-${index}`,
@@ -99,6 +164,98 @@ const getMetaFromResponse = (result) => {
 const getSavedJobId = (job) => {
   return job?.id || job?.job_id || job?.jobId || job?.job?.id || null;
 };
+
+function CustomSelect({ value, options, onChange }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative w-full lg:w-[240px] xl:w-[260px]">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className="
+          w-full
+          bg-white
+          rounded-2xl
+          px-5
+          py-4
+          text-sm
+          text-gray-700
+          shadow-sm
+          flex
+          items-center
+          justify-between
+          gap-3
+          hover:bg-gray-50
+          transition-all
+        "
+      >
+        <span className="truncate">{value}</span>
+
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          className={`w-4 h-4 text-gray-500 transition-transform ${
+            open ? "rotate-180" : ""
+          }`}
+        >
+          <path
+            d="M6 9l6 6 6-6"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+
+      {open && (
+        <div
+          className="
+            absolute
+            left-0
+            right-0
+            top-[calc(100%+8px)]
+            bg-white
+            rounded-2xl
+            shadow-xl
+            border
+            border-gray-100
+            overflow-y-auto
+            max-h-64
+            z-30
+          "
+        >
+          {options.map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => {
+                onChange(option);
+                setOpen(false);
+              }}
+              className={`
+                w-full
+                text-left
+                px-5
+                py-3
+                text-sm
+                transition-all
+                ${
+                  value === option
+                    ? "bg-[#FDF2F2] text-[#8B1A1A] font-bold"
+                    : "text-gray-700 hover:bg-gray-50"
+                }
+              `}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function JobsPage() {
   const navigate = useNavigate();
@@ -221,9 +378,7 @@ export default function JobsPage() {
       return;
     }
 
-    const wasSaved = savedJobs.some(
-      (item) => getSavedJobId(item) === job.id
-    );
+    const wasSaved = savedJobs.some((item) => getSavedJobId(item) === job.id);
 
     try {
       setIsSaving(job.id);
@@ -279,7 +434,9 @@ export default function JobsPage() {
         className="
           bg-[#C89696]
           rounded-[32px]
-          p-6
+          p-5
+          md:p-7
+          lg:p-8
           mb-8
           shadow-sm
         "
@@ -287,24 +444,32 @@ export default function JobsPage() {
         {/* SEARCH BAR */}
         <div
           className="
-            grid
-            grid-cols-1
-            lg:grid-cols-4
+            flex
+            flex-col
+            lg:flex-row
             gap-4
+            md:gap-5
+            items-stretch
+            lg:items-center
+            w-full
           "
         >
           {/* SEARCH */}
           <div
             className="
-              lg:col-span-2
               flex items-center gap-3
               bg-white
               rounded-2xl
-              px-4 py-4
+              px-4
+              md:px-5
+              py-4
               shadow-sm
+              w-full
+              lg:w-[52%]
+              min-w-0
             "
           >
-            <Search size={20} className="text-gray-400" />
+            <Search size={20} className="text-gray-400 flex-shrink-0" />
 
             <input
               type="text"
@@ -315,52 +480,25 @@ export default function JobsPage() {
                 bg-transparent
                 outline-none
                 w-full
+                min-w-0
                 text-sm
               "
             />
           </div>
 
           {/* LOKASI */}
-          <select
+          <CustomSelect
             value={lokasi}
-            onChange={(e) => handleLokasiChange(e.target.value)}
-            className="
-              bg-white
-              rounded-2xl
-              px-4 py-4
-              outline-none
-              text-sm
-              text-gray-700
-              shadow-sm
-            "
-          >
-            <option>Semua Lokasi</option>
-            <option>Jakarta</option>
-            <option>Bandung</option>
-            <option>Surabaya</option>
-            <option>Remote</option>
-            <option>Bali</option>
-          </select>
+            options={LOKASI_OPTIONS}
+            onChange={handleLokasiChange}
+          />
 
           {/* KATEGORI */}
-          <select
+          <CustomSelect
             value={kategori}
-            onChange={(e) => handleKategoriChange(e.target.value)}
-            className="
-              bg-white
-              rounded-2xl
-              px-4 py-4
-              outline-none
-              text-sm
-              text-gray-700
-              shadow-sm
-            "
-          >
-            <option>Semua Kategori</option>
-            <option>Data</option>
-            <option>IT</option>
-            <option>Design</option>
-          </select>
+            options={KATEGORI_OPTIONS}
+            onChange={handleKategoriChange}
+          />
         </div>
 
         {/* POPULAR SEARCH */}
