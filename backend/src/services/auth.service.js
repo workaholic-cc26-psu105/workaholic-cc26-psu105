@@ -1,113 +1,123 @@
-const { createClient } = require("@supabase/supabase-js");
 const supabase = require("../config/supabase");
 
-const register = async ({ nama, email, password }) => {
+const getFrontendUrl = () => {
+  return process.env.FRONTEND_URL || "http://localhost:5173";
+};
+
+const register = async (payload) => {
+  const nama = payload.nama || payload.name || payload.full_name;
+  const email = payload.email;
+  const password = payload.password;
+
   if (!nama || !email || !password) {
     const error = new Error("Nama, email, dan password wajib diisi");
-    error.statusCode = 422;
+    error.statusCode = 400;
     throw error;
   }
 
-  if (password.length < 8) {
-    const error = new Error("Password minimal 8 karakter");
-    error.statusCode = 422;
-    throw error;
-  }
-
-  const { data: authData, error: authError } = await supabase.auth.signUp({
+  const { data, error: signUpError } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: {
         nama,
+        role: "Fresh Graduate",
       },
     },
   });
 
-  if (authError) {
-    const error = new Error(authError.message);
+  if (signUpError) {
+    const error = new Error(signUpError.message);
     error.statusCode = 400;
     throw error;
   }
 
-  const user = authData.user;
-  const session = authData.session;
+  const user = data.user;
 
-  if (!user) {
-    const error = new Error("Registrasi gagal");
-    error.statusCode = 400;
-    throw error;
-  }
-
-  const { error: profileError } = await supabase.from("user_profiles").insert({
-    id: user.id,
-    nama,
-    email,
-  });
-
-  if (profileError) {
-    const error = new Error(profileError.message);
-    error.statusCode = 400;
-    throw error;
+  if (user) {
+    await supabase.from("users").upsert({
+      id: user.id,
+      nama,
+      email,
+      role: "Fresh Graduate",
+      updated_at: new Date().toISOString(),
+    });
   }
 
   return {
-    id: user.id,
-    nama,
-    email,
-    token: session?.access_token || null,
+    token: data.session?.access_token || null,
+    user: {
+      id: user?.id,
+      nama,
+      email,
+      role: "Fresh Graduate",
+    },
   };
 };
 
-const login = async ({ email, password }) => {
+const login = async (payload) => {
+  const email = payload.email;
+  const password = payload.password;
+
   if (!email || !password) {
     const error = new Error("Email dan password wajib diisi");
-    error.statusCode = 422;
+    error.statusCode = 400;
     throw error;
   }
 
-  const { data, error: authError } = await supabase.auth.signInWithPassword({
+  const { data, error: loginError } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
 
-  if (authError || !data.user || !data.session) {
+  if (loginError) {
     const error = new Error("Email atau password salah");
     error.statusCode = 401;
     throw error;
   }
 
+  const user = data.user;
+
   const { data: profile } = await supabase
-    .from("user_profiles")
+    .from("users")
     .select("*")
-    .eq("id", data.user.id)
+    .eq("id", user.id)
     .maybeSingle();
 
   return {
     token: data.session.access_token,
     user: {
-      id: data.user.id,
-      nama: profile?.nama || data.user.user_metadata?.nama || "",
-      email: data.user.email,
-      role: profile?.role || null,
+      id: user.id,
+      email: user.email,
+      nama:
+        profile?.nama ||
+        user.user_metadata?.nama ||
+        user.user_metadata?.name ||
+        "User",
+      role: profile?.role || user.user_metadata?.role || "Fresh Graduate",
       avatar: profile?.avatar || null,
     },
   };
 };
 
-const forgotPassword = async ({ email }) => {
+const forgotPassword = async (payload) => {
+  const email =
+    typeof payload === "string"
+      ? payload
+      : payload?.email;
+
   if (!email) {
     const error = new Error("Email wajib diisi");
-    error.statusCode = 422;
+    error.statusCode = 400;
     throw error;
   }
+
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
 
   const { error: resetError } = await supabase.auth.resetPasswordForEmail(
     email,
     {
-      redirectTo:
-        process.env.FRONTEND_RESET_PASSWORD_URL ||
-        "http://localhost:5173/reset-password",
+      redirectTo: `${frontendUrl}/reset-password`,
     }
   );
 
@@ -118,45 +128,35 @@ const forgotPassword = async ({ email }) => {
   }
 
   return {
-    message: "Link reset password telah dikirim ke email",
+    message: "Link reset password berhasil dikirim ke email.",
   };
 };
 
-const resetPassword = async ({ token, password, password_confirmation }) => {
-  if (!token || !password || !password_confirmation) {
-    const error = new Error("Token, password, dan konfirmasi password wajib diisi");
-    error.statusCode = 422;
+const resetPassword = async (payload) => {
+  const accessToken = payload.accessToken || payload.access_token;
+  const refreshToken = payload.refreshToken || payload.refresh_token;
+  const password = payload.password || payload.newPassword || payload.new_password;
+
+  if (!password) {
+    const error = new Error("Password baru wajib diisi");
+    error.statusCode = 400;
     throw error;
   }
 
-  if (password.length < 8) {
-    const error = new Error("Password minimal 8 karakter");
-    error.statusCode = 422;
-    throw error;
-  }
+  if (accessToken && refreshToken) {
+    const { error: sessionError } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
 
-  if (password !== password_confirmation) {
-    const error = new Error("Konfirmasi password tidak sesuai");
-    error.statusCode = 422;
-    throw error;
-  }
-
-  const userSupabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_KEY,
-    {
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
-      auth: {
-        persistSession: false,
-      },
+    if (sessionError) {
+      const error = new Error(sessionError.message);
+      error.statusCode = 400;
+      throw error;
     }
-  );
+  }
 
-  const { error: updateError } = await userSupabase.auth.updateUser({
+  const { error: updateError } = await supabase.auth.updateUser({
     password,
   });
 
@@ -167,7 +167,7 @@ const resetPassword = async ({ token, password, password_confirmation }) => {
   }
 
   return {
-    message: "Kata sandi berhasil diperbarui",
+    message: "Password berhasil diperbarui.",
   };
 };
 
