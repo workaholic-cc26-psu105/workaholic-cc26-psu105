@@ -100,6 +100,7 @@ export default function Topbar() {
   const loadProfile = useCallback(async () => {
     const savedUser = localStorage.getItem("userProfile");
     const parsedUser = safeJsonParse(savedUser, null);
+    const savedAvatar = parsedUser?.avatar;
 
     if (parsedUser) {
       setUser({
@@ -114,14 +115,19 @@ export default function Topbar() {
 
     try {
       const result = await apiRequest("/user/profile");
+      const apiProfile = result?.data || result || {};
 
-      setUser({
+      const mergedProfile = {
         ...DEFAULT_USER,
-        ...result.data,
-        avatar: result.data.avatar || DEFAULT_USER.avatar,
-      });
+        ...apiProfile,
+        avatar:
+          savedAvatar && savedAvatar !== DEFAULT_USER.avatar
+            ? savedAvatar
+            : apiProfile.avatar || DEFAULT_USER.avatar,
+      };
 
-      localStorage.setItem("userProfile", JSON.stringify(result.data));
+      setUser(mergedProfile);
+      localStorage.setItem("userProfile", JSON.stringify(mergedProfile));
     } catch (error) {
       console.error(error.message);
     }
@@ -234,7 +240,6 @@ export default function Topbar() {
             )}
           </button>
 
-          {/* DROPDOWN */}
           {showNotif && (
             <div className="absolute right-0 top-16 w-[340px] bg-white rounded-3xl border border-gray-100 shadow-xl overflow-hidden z-50">
               <div className="p-5 border-b border-gray-100">
