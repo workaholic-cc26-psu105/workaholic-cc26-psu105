@@ -25,6 +25,49 @@ const safeJsonParse = (value, fallback = []) => {
   }
 };
 
+const getNotificationTimestamp = (notif) => {
+  if (notif?.createdAt) {
+    return new Date(notif.createdAt).getTime();
+  }
+
+  if (typeof notif?.id === "number") {
+    return notif.id;
+  }
+
+  return null;
+};
+
+const formatNotificationTime = (notif) => {
+  const timestamp = getNotificationTimestamp(notif);
+
+  if (!timestamp || Number.isNaN(timestamp)) {
+    return notif?.time || "Baru saja";
+  }
+
+  const now = Date.now();
+  const diffInSeconds = Math.floor((now - timestamp) / 1000);
+
+  if (diffInSeconds < 60) {
+    return "Baru saja";
+  }
+
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+
+  if (diffInMinutes < 60) {
+    return `${diffInMinutes} menit lalu`;
+  }
+
+  const diffInHours = Math.floor(diffInMinutes / 60);
+
+  if (diffInHours < 24) {
+    return `${diffInHours} jam lalu`;
+  }
+
+  const diffInDays = Math.floor(diffInHours / 24);
+
+  return `${diffInDays} hari lalu`;
+};
+
 const getRealNotifications = () => {
   const savedNotif = localStorage.getItem("notifications");
   const parsedNotif = safeJsonParse(savedNotif, []);
@@ -56,11 +99,12 @@ export default function Topbar() {
 
   const loadProfile = useCallback(async () => {
     const savedUser = localStorage.getItem("userProfile");
+    const parsedUser = safeJsonParse(savedUser, null);
 
-    if (savedUser) {
+    if (parsedUser) {
       setUser({
         ...DEFAULT_USER,
-        ...JSON.parse(savedUser),
+        ...parsedUser,
       });
     }
 
@@ -89,11 +133,16 @@ export default function Topbar() {
       loadNotifications();
     }, 0);
 
+    const intervalId = setInterval(() => {
+      loadNotifications();
+    }, 60 * 1000);
+
     window.addEventListener("profileUpdated", loadProfile);
     window.addEventListener("notificationsUpdated", loadNotifications);
 
     return () => {
       clearTimeout(timeoutId);
+      clearInterval(intervalId);
       window.removeEventListener("profileUpdated", loadProfile);
       window.removeEventListener("notificationsUpdated", loadNotifications);
     };
@@ -140,12 +189,6 @@ export default function Topbar() {
     navigate(`/jobs?q=${encodeURIComponent(keyword)}`);
   };
 
-  const handleSearch = (e) => {
-    if (e.key === "Enter" && searchKeyword.trim()) {
-      navigate(`/jobs?q=${encodeURIComponent(searchKeyword.trim())}`);
-    }
-  };
-
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -169,7 +212,6 @@ export default function Topbar() {
           type="text"
           value={searchKeyword}
           onChange={(e) => setSearchKeyword(e.target.value)}
-          onKeyDown={handleSearch}
           placeholder="Cari pekerjaan..."
           className="bg-transparent outline-none text-sm w-full"
         />
@@ -229,7 +271,7 @@ export default function Topbar() {
                           </h4>
 
                           <p className="text-xs text-gray-400 mt-1">
-                            {notif.time}
+                            {formatNotificationTime(notif)}
                           </p>
                         </div>
                       </div>

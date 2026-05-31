@@ -1,10 +1,10 @@
-export const addNotification = (title, time = "Baru saja") => {
+export const addNotification = (title) => {
   const existing = JSON.parse(localStorage.getItem("notifications") || "[]");
 
   const newNotification = {
     id: Date.now(),
     title,
-    time,
+    createdAt: new Date().toISOString(),
     read: false,
   };
 
