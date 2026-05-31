@@ -255,7 +255,7 @@ export default function CVReviewPage() {
     <div className="min-h-screen bg-[#F0F0F0] font-sans antialiased">
       <main className="max-w-5xl mx-auto w-full px-4 md:px-6 py-10 space-y-6">
         {/* HEADER */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-5 flex items-center gap-4">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-5 flex flex-col sm:flex-row sm:items-center gap-4">
           <div className="relative flex-shrink-0">
             <div className="w-12 h-12 rounded-xl bg-[#FDF2F2] flex items-center justify-center">
               <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
@@ -304,7 +304,8 @@ export default function CVReviewPage() {
           <button
             onClick={() => navigate("/analysis")}
             className="
-              ml-auto
+              w-full sm:w-auto
+              sm:ml-auto
               text-xs
               font-bold
               text-[#8B1A1A]
@@ -313,7 +314,6 @@ export default function CVReviewPage() {
               rounded-xl
               hover:bg-[#FDF2F2]
               transition-all
-              flex-shrink-0
             "
           >
             Upload Ulang CV
@@ -323,7 +323,7 @@ export default function CVReviewPage() {
         {/* KECOCOKAN */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-5">
           <div className="flex flex-col sm:flex-row gap-6">
-            <div className="flex items-center gap-4 flex-1">
+            <div className="flex items-center gap-4 flex-1 min-w-0">
               <SkorRing skor={result.skor} />
 
               <div>
@@ -367,7 +367,7 @@ export default function CVReviewPage() {
                   Estimasi Kisaran Gaji
                 </p>
 
-                <p className="text-base font-extrabold text-gray-900 leading-tight">
+                <p className="text-sm md:text-base font-extrabold text-gray-900 leading-tight break-words">
                   {result.kisaranGaji}
                 </p>
 

@@ -110,7 +110,7 @@ export default function JobDetailPage() {
               Lowongan Terpilih
             </div>
 
-            <h1 className="text-4xl md:text-5xl font-black leading-tight">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold break-words">
               {job.judul}
             </h1>
 

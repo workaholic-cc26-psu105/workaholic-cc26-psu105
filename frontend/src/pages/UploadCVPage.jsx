@@ -364,8 +364,7 @@ export default function UploadCVPage() {
                   ].map((item) => (
                     <div key={item} className="flex items-start gap-3">
                       <CheckCircle2
-                        size={18}
-                        className="text-green-600 mt-0.5"
+                        className="w-[18px] h-[18px] text-green-600 mt-0.5 shrink-0"
                       />
 
                       <p className="text-sm text-gray-700 leading-relaxed">
