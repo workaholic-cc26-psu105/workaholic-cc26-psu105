@@ -58,6 +58,7 @@ const updateUserProfile = async (userId, payload) => {
     "education",
     "bio",
     "skills",
+    "avatar",
   ];
 
   const updateData = {};

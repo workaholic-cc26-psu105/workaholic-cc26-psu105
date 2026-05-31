@@ -11,26 +11,75 @@ const DEFAULT_USER = {
   avatar: "https://i.pravatar.cc/300?img=12",
 };
 
-const DEFAULT_NOTIFICATIONS = [
-  {
-    id: 1,
-    title: "CV berhasil dianalisis",
-    time: "Baru saja",
-    read: false,
-  },
-  {
-    id: 2,
-    title: "3 lowongan baru cocok untukmu",
-    time: "10 menit lalu",
-    read: false,
-  },
-  {
-    id: 3,
-    title: "Profile berhasil diperbarui",
-    time: "1 jam lalu",
-    read: true,
-  },
+const DUMMY_NOTIFICATION_TITLES = [
+  "CV berhasil dianalisis",
+  "3 lowongan baru cocok untukmu",
+  "Profile berhasil diperbarui",
 ];
+
+const safeJsonParse = (value, fallback = []) => {
+  try {
+    return value ? JSON.parse(value) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const getNotificationTimestamp = (notif) => {
+  if (notif?.createdAt) {
+    return new Date(notif.createdAt).getTime();
+  }
+
+  if (typeof notif?.id === "number") {
+    return notif.id;
+  }
+
+  return null;
+};
+
+const formatNotificationTime = (notif) => {
+  const timestamp = getNotificationTimestamp(notif);
+
+  if (!timestamp || Number.isNaN(timestamp)) {
+    return notif?.time || "Baru saja";
+  }
+
+  const now = Date.now();
+  const diffInSeconds = Math.floor((now - timestamp) / 1000);
+
+  if (diffInSeconds < 60) {
+    return "Baru saja";
+  }
+
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+
+  if (diffInMinutes < 60) {
+    return `${diffInMinutes} menit lalu`;
+  }
+
+  const diffInHours = Math.floor(diffInMinutes / 60);
+
+  if (diffInHours < 24) {
+    return `${diffInHours} jam lalu`;
+  }
+
+  const diffInDays = Math.floor(diffInHours / 24);
+
+  return `${diffInDays} hari lalu`;
+};
+
+const getRealNotifications = () => {
+  const savedNotif = localStorage.getItem("notifications");
+  const parsedNotif = safeJsonParse(savedNotif, []);
+
+  if (!Array.isArray(parsedNotif)) {
+    return [];
+  }
+
+  return parsedNotif.filter(
+    (notif) => !DUMMY_NOTIFICATION_TITLES.includes(notif.title)
+  );
+};
 
 export default function Topbar() {
   const navigate = useNavigate();
@@ -39,25 +88,24 @@ export default function Topbar() {
   const [user, setUser] = useState(DEFAULT_USER);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [showNotif, setShowNotif] = useState(false);
+  const [notifications, setNotifications] = useState([]);
 
-  const [notifications, setNotifications] = useState(() => {
-    const savedNotif = localStorage.getItem("notifications");
+  const loadNotifications = useCallback(() => {
+    const realNotifications = getRealNotifications();
 
-    if (savedNotif) {
-      return JSON.parse(savedNotif);
-    }
-
-    localStorage.setItem("notifications", JSON.stringify(DEFAULT_NOTIFICATIONS));
-    return DEFAULT_NOTIFICATIONS;
-  });
+    setNotifications(realNotifications);
+    localStorage.setItem("notifications", JSON.stringify(realNotifications));
+  }, []);
 
   const loadProfile = useCallback(async () => {
     const savedUser = localStorage.getItem("userProfile");
+    const parsedUser = safeJsonParse(savedUser, null);
+    const savedAvatar = parsedUser?.avatar;
 
-    if (savedUser) {
+    if (parsedUser) {
       setUser({
         ...DEFAULT_USER,
-        ...JSON.parse(savedUser),
+        ...parsedUser,
       });
     }
 
@@ -67,14 +115,19 @@ export default function Topbar() {
 
     try {
       const result = await apiRequest("/user/profile");
+      const apiProfile = result?.data || result || {};
 
-      setUser({
+      const mergedProfile = {
         ...DEFAULT_USER,
-        ...result.data,
-        avatar: result.data.avatar || DEFAULT_USER.avatar,
-      });
+        ...apiProfile,
+        avatar:
+          savedAvatar && savedAvatar !== DEFAULT_USER.avatar
+            ? savedAvatar
+            : apiProfile.avatar || DEFAULT_USER.avatar,
+      };
 
-      localStorage.setItem("userProfile", JSON.stringify(result.data));
+      setUser(mergedProfile);
+      localStorage.setItem("userProfile", JSON.stringify(mergedProfile));
     } catch (error) {
       console.error(error.message);
     }
@@ -83,15 +136,23 @@ export default function Topbar() {
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       loadProfile();
+      loadNotifications();
     }, 0);
 
+    const intervalId = setInterval(() => {
+      loadNotifications();
+    }, 60 * 1000);
+
     window.addEventListener("profileUpdated", loadProfile);
+    window.addEventListener("notificationsUpdated", loadNotifications);
 
     return () => {
       clearTimeout(timeoutId);
+      clearInterval(intervalId);
       window.removeEventListener("profileUpdated", loadProfile);
+      window.removeEventListener("notificationsUpdated", loadNotifications);
     };
-  }, [loadProfile]);
+  }, [loadProfile, loadNotifications]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -144,19 +205,6 @@ export default function Topbar() {
     navigate("/login");
   };
 
-  const handleSearch = (e) => {
-  if (
-    e.key === "Enter" &&
-    searchKeyword.trim()
-  ) {
-    navigate(
-      `/jobs?q=${encodeURIComponent(
-        searchKeyword
-      )}`
-    );
-  }
-};
-
   return (
     <header className="h-20 bg-white border-b border-gray-100 px-6 flex items-center justify-between">
       {/* SEARCH */}
@@ -170,7 +218,6 @@ export default function Topbar() {
           type="text"
           value={searchKeyword}
           onChange={(e) => setSearchKeyword(e.target.value)}
-          onKeyDown={handleSearch}
           placeholder="Cari pekerjaan..."
           className="bg-transparent outline-none text-sm w-full"
         />
@@ -193,7 +240,6 @@ export default function Topbar() {
             )}
           </button>
 
-          {/* DROPDOWN */}
           {showNotif && (
             <div className="absolute right-0 top-16 w-[340px] bg-white rounded-3xl border border-gray-100 shadow-xl overflow-hidden z-50">
               <div className="p-5 border-b border-gray-100">
@@ -208,7 +254,7 @@ export default function Topbar() {
                     <Bell size={36} className="mx-auto text-gray-300 mb-3" />
 
                     <p className="text-sm text-gray-400">
-                      Tidak ada notifikasi
+                      Belum ada notifikasi
                     </p>
                   </div>
                 ) : (
@@ -230,7 +276,7 @@ export default function Topbar() {
                           </h4>
 
                           <p className="text-xs text-gray-400 mt-1">
-                            {notif.time}
+                            {formatNotificationTime(notif)}
                           </p>
                         </div>
                       </div>

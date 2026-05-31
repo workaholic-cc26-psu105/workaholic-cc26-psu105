@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { apiRequest } from "../services/api";
+import { addNotification } from "../utils/notification";
 
 import {
   Search,
@@ -12,70 +14,6 @@ import {
   Clock3,
 } from "lucide-react";
 
-// ── DUMMY DATA ─────────────────────────────────────
-const DUMMY_JOBS = Array(24)
-  .fill(null)
-  .map((_, i) => ({
-    id: i + 1,
-
-    judul: [
-      "Frontend Developer",
-      "Backend Developer",
-      "UI/UX Designer",
-      "AI Engineer",
-      "Data Analyst",
-      "Fullstack Developer",
-    ][i % 6],
-
-    perusahaan: [
-      "PT Workaholic Digital",
-      "Tech Nusantara",
-      "Sky Labs",
-      "Future Tech",
-      "AI Indonesia",
-      "Inovasi Digital",
-    ][i % 6],
-
-    lokasi: [
-      "Jakarta",
-      "Bandung",
-      "Surabaya",
-      "Remote",
-      "Yogyakarta",
-      "Bali",
-    ][i % 6],
-
-    kategori: [
-      "IT",
-      "IT",
-      "Design",
-      "IT",
-      "Data",
-      "IT",
-    ][i % 6],
-
-    pendidikan: [
-      "S1",
-      "D3",
-      "Fresh Graduate",
-      "SMA/SMK",
-    ][i % 4],
-
-    tipe: [
-      "Full Time",
-      "Remote",
-      "Hybrid",
-      "Internship",
-    ][i % 4],
-
-    salary: [
-      "Rp 5jt - 7jt",
-      "Rp 7jt - 10jt",
-      "Rp 4jt - 6jt",
-      "Rp 8jt - 12jt",
-    ][i % 4],
-  }));
-
 const JOBS_PER_PAGE = 6;
 
 const POPULAR_SEARCH = [
@@ -85,119 +23,410 @@ const POPULAR_SEARCH = [
   "AI Engineer",
 ];
 
-// ── MAIN PAGE ─────────────────────────────────────
+const LOKASI_OPTIONS = [
+  "Semua Lokasi",
+  "Remote",
+  "Jakarta",
+  "Jakarta Barat",
+  "Jakarta Pusat",
+  "Jakarta Selatan",
+  "Jakarta Timur",
+  "Jakarta Utara",
+  "Bogor",
+  "Depok",
+  "Tangerang",
+  "Tangerang Selatan",
+  "Bekasi",
+  "Bandung",
+  "Semarang",
+  "Yogyakarta",
+  "Surakarta",
+  "Surabaya",
+  "Malang",
+  "Sidoarjo",
+  "Denpasar",
+  "Bali",
+  "Medan",
+  "Palembang",
+  "Pekanbaru",
+  "Batam",
+  "Padang",
+  "Bandar Lampung",
+  "Banjarmasin",
+  "Balikpapan",
+  "Samarinda",
+  "Pontianak",
+  "Makassar",
+  "Manado",
+  "Mataram",
+];
+
+const KATEGORI_OPTIONS = [
+  "Semua Kategori",
+  "Data",
+  "IT",
+  "Design",
+  "Marketing",
+  "Sales",
+  "Finance",
+  "Accounting",
+  "Human Resource",
+  "Customer Service",
+  "Administration",
+  "Operations",
+  "Engineering",
+  "Education",
+  "Healthcare",
+  "Media",
+  "Creative",
+  "Product",
+  "Business Development",
+  "Software Development",
+  "Quality Assurance",
+  "Cybersecurity",
+  "Cloud Computing",
+  "Project Management",
+];
+
+const normalizeJob = (job, index) => {
+  return {
+    id: job.id || job.job_id || job.jobId || `job-${index}`,
+
+    judul:
+      job.judul ||
+      job.jobTitle ||
+      job.job_title ||
+      job.title ||
+      "Tanpa Judul",
+
+    perusahaan:
+      job.perusahaan ||
+      job.companyName ||
+      job.company_name ||
+      job.company ||
+      "Perusahaan tidak disebutkan",
+
+    lokasi:
+      job.lokasi ||
+      job.locations ||
+      job.location ||
+      "Lokasi tidak disebutkan",
+
+    kategori:
+      job.kategori ||
+      job.categoriesName ||
+      job.categories_name ||
+      job.category ||
+      "Tidak disebutkan",
+
+    pendidikan:
+      job.pendidikan ||
+      job.education ||
+      job.educationLevel ||
+      job.minimumEducation ||
+      "Tidak disebutkan",
+
+    tipe:
+      job.tipe ||
+      job.employment ||
+      job.employmentType ||
+      "Tidak disebutkan",
+
+    salary:
+      job.salary ||
+      job.gaji ||
+      job.salary_range ||
+      job.salaryRange ||
+      "Gaji tidak dicantumkan",
+  };
+};
+
+const getJobsFromResponse = (result) => {
+  if (Array.isArray(result?.data)) {
+    return result.data;
+  }
+
+  if (Array.isArray(result?.data?.jobs)) {
+    return result.data.jobs;
+  }
+
+  if (Array.isArray(result?.jobs)) {
+    return result.jobs;
+  }
+
+  return [];
+};
+
+const getMetaFromResponse = (result) => {
+  return result?.meta || result?.data?.meta || {};
+};
+
+const getSavedJobId = (job) => {
+  return job?.id || job?.job_id || job?.jobId || job?.job?.id || null;
+};
+
+function CustomSelect({ value, options, onChange }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative w-full lg:w-[240px] xl:w-[260px]">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className="
+          w-full
+          bg-white
+          rounded-2xl
+          px-5
+          py-4
+          text-sm
+          text-gray-700
+          shadow-sm
+          flex
+          items-center
+          justify-between
+          gap-3
+          hover:bg-gray-50
+          transition-all
+        "
+      >
+        <span className="truncate">{value}</span>
+
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          className={`w-4 h-4 text-gray-500 transition-transform ${
+            open ? "rotate-180" : ""
+          }`}
+        >
+          <path
+            d="M6 9l6 6 6-6"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+
+      {open && (
+        <div
+          className="
+            absolute
+            left-0
+            right-0
+            top-[calc(100%+8px)]
+            bg-white
+            rounded-2xl
+            shadow-xl
+            border
+            border-gray-100
+            overflow-y-auto
+            max-h-64
+            z-30
+          "
+        >
+          {options.map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => {
+                onChange(option);
+                setOpen(false);
+              }}
+              className={`
+                w-full
+                text-left
+                px-5
+                py-3
+                text-sm
+                transition-all
+                ${
+                  value === option
+                    ? "bg-[#FDF2F2] text-[#8B1A1A] font-bold"
+                    : "text-gray-700 hover:bg-gray-50"
+                }
+              `}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function JobsPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  const [keyword, setKeyword] =
-    useState("");
+  const [jobs, setJobs] = useState([]);
+  const [savedJobs, setSavedJobs] = useState([]);
 
-  const [lokasi, setLokasi] =
-    useState("Semua Lokasi");
+  const [totalJobs, setTotalJobs] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
-  const [kategori, setKategori] =
-    useState("Semua Kategori");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const [currentPage, setCurrentPage] =
-    useState(1);
+  const [keyword, setKeyword] = useState(
+    searchParams.get("q") || searchParams.get("keyword") || ""
+  );
 
-  // ── SAVED JOBS ───────────────────────────
-  const [savedJobs, setSavedJobs] =
-    useState(() => {
-      const existing =
-        localStorage.getItem("savedJobs");
+  const [lokasi, setLokasi] = useState("Semua Lokasi");
+  const [kategori, setKategori] = useState("Semua Kategori");
+  const [currentPage, setCurrentPage] = useState(1);
 
-      return existing
-        ? JSON.parse(existing)
-        : [];
-    });
+  const fetchSavedJobs = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("token");
 
-  // ── SAVE JOB ─────────────────────────────
-  const handleSaveJob = (e, job) => {
+      if (!token) {
+        setSavedJobs([]);
+        return;
+      }
+
+      const result = await apiRequest("/user/saved-jobs");
+
+      setSavedJobs(Array.isArray(result?.data) ? result.data : []);
+    } catch (error) {
+      console.log("Gagal memuat saved jobs:", error.message);
+      setSavedJobs([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchJobs = async () => {
+      setIsLoading(true);
+      setErrorMessage("");
+
+      try {
+        const params = new URLSearchParams();
+
+        params.set("page", String(currentPage));
+        params.set("per_page", String(JOBS_PER_PAGE));
+
+        if (keyword.trim()) {
+          params.set("keyword", keyword.trim());
+        }
+
+        if (lokasi !== "Semua Lokasi") {
+          params.set("lokasi", lokasi);
+        }
+
+        if (kategori !== "Semua Kategori") {
+          params.set("kategori", kategori);
+        }
+
+        const result = await apiRequest(`/jobs?${params.toString()}`);
+
+        const rawJobs = getJobsFromResponse(result);
+        const meta = getMetaFromResponse(result);
+
+        const normalizedJobs = rawJobs.map((job, index) =>
+          normalizeJob(job, index)
+        );
+
+        if (isMounted) {
+          setJobs(normalizedJobs);
+          setTotalJobs(meta.total || normalizedJobs.length);
+          setTotalPages(meta.total_pages || 1);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setJobs([]);
+          setTotalJobs(0);
+          setTotalPages(1);
+          setErrorMessage(error.message || "Gagal memuat data lowongan.");
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    const timeoutId = setTimeout(() => {
+      fetchJobs();
+    }, 0);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+    };
+  }, [keyword, lokasi, kategori, currentPage]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      fetchSavedJobs();
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
+  }, [fetchSavedJobs]);
+
+  const handleSaveJob = async (e, job) => {
     e.stopPropagation();
 
-    const isSaved = savedJobs.some(
-      (item) => item.id === job.id
-    );
+    const token = localStorage.getItem("token");
 
-    let updatedJobs;
-
-    if (isSaved) {
-      updatedJobs = savedJobs.filter(
-        (item) => item.id !== job.id
-      );
-    } else {
-      updatedJobs = [...savedJobs, job];
+    if (!token) {
+      navigate("/login");
+      return;
     }
 
-    setSavedJobs(updatedJobs);
+    const wasSaved = savedJobs.some((item) => getSavedJobId(item) === job.id);
 
-    localStorage.setItem(
-      "savedJobs",
-      JSON.stringify(updatedJobs)
-    );
+    try {
+      setIsSaving(job.id);
+
+      await apiRequest(`/user/saved-jobs/${job.id}`, {
+        method: "POST",
+      });
+
+      addNotification(
+        wasSaved
+          ? "Lowongan dihapus dari tersimpan"
+          : "Lowongan berhasil disimpan"
+      );
+
+      await fetchSavedJobs();
+    } catch (error) {
+      alert(error.message || "Gagal menyimpan lowongan.");
+    } finally {
+      setIsSaving("");
+    }
   };
 
-  // ── FILTER ───────────────────────────────
-  const filteredJobs = DUMMY_JOBS.filter(
-    (job) => {
-      const matchKeyword =
-        job.judul
-          .toLowerCase()
-          .includes(
-            keyword.toLowerCase()
-          ) ||
-        job.perusahaan
-          .toLowerCase()
-          .includes(
-            keyword.toLowerCase()
-          );
+  const handleKeywordChange = (value) => {
+    setKeyword(value);
+    setCurrentPage(1);
+  };
 
-      const matchLokasi =
-        lokasi === "Semua Lokasi" ||
-        job.lokasi === lokasi;
+  const handleLokasiChange = (value) => {
+    setLokasi(value);
+    setCurrentPage(1);
+  };
 
-      const matchKategori =
-        kategori ===
-          "Semua Kategori" ||
-        job.kategori === kategori;
-
-      return (
-        matchKeyword &&
-        matchLokasi &&
-        matchKategori
-      );
-    }
-  );
-
-  // ── PAGINATION ───────────────────────────
-  const totalPages = Math.ceil(
-    filteredJobs.length /
-      JOBS_PER_PAGE
-  );
-
-  const paginatedJobs =
-    filteredJobs.slice(
-      (currentPage - 1) *
-        JOBS_PER_PAGE,
-      currentPage * JOBS_PER_PAGE
-    );
+  const handleKategoriChange = (value) => {
+    setKategori(value);
+    setCurrentPage(1);
+  };
 
   return (
     <div className="min-h-screen bg-[#F6F6F6] p-4 md:p-8">
-
       {/* HEADER */}
       <div className="mb-6">
-
         <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900">
           Cari Lowongan Kerja
         </h1>
 
         <p className="text-gray-500 mt-2">
-          Temukan pekerjaan terbaik
-          sesuai skill dan minatmu
+          Temukan pekerjaan terbaik sesuai skill dan minatmu
         </p>
-
       </div>
 
       {/* SEARCH SECTION */}
@@ -205,141 +434,75 @@ export default function JobsPage() {
         className="
           bg-[#C89696]
           rounded-[32px]
-          p-6
+          p-5
+          md:p-7
+          lg:p-8
           mb-8
           shadow-sm
         "
       >
-
         {/* SEARCH BAR */}
         <div
           className="
-            grid
-            grid-cols-1
-            lg:grid-cols-4
+            flex
+            flex-col
+            lg:flex-row
             gap-4
+            md:gap-5
+            items-stretch
+            lg:items-center
+            w-full
           "
         >
-
           {/* SEARCH */}
           <div
             className="
-              lg:col-span-2
               flex items-center gap-3
               bg-white
               rounded-2xl
-              px-4 py-4
+              px-4
+              md:px-5
+              py-4
               shadow-sm
+              w-full
+              lg:w-[52%]
+              min-w-0
             "
           >
-
-            <Search
-              size={20}
-              className="text-gray-400"
-            />
+            <Search size={20} className="text-gray-400 flex-shrink-0" />
 
             <input
               type="text"
               placeholder="Cari pekerjaan..."
               value={keyword}
-              onChange={(e) =>
-                setKeyword(
-                  e.target.value
-                )
-              }
+              onChange={(e) => handleKeywordChange(e.target.value)}
               className="
                 bg-transparent
                 outline-none
                 w-full
+                min-w-0
                 text-sm
               "
             />
-
           </div>
 
           {/* LOKASI */}
-          <select
+          <CustomSelect
             value={lokasi}
-            onChange={(e) =>
-              setLokasi(
-                e.target.value
-              )
-            }
-            className="
-              bg-white
-              rounded-2xl
-              px-4 py-4
-              outline-none
-              text-sm
-              text-gray-700
-              shadow-sm
-            "
-          >
-            <option>
-              Semua Lokasi
-            </option>
-
-            <option>
-              Jakarta
-            </option>
-
-            <option>
-              Bandung
-            </option>
-
-            <option>
-              Surabaya
-            </option>
-
-            <option>
-              Remote
-            </option>
-
-            <option>Bali</option>
-
-          </select>
+            options={LOKASI_OPTIONS}
+            onChange={handleLokasiChange}
+          />
 
           {/* KATEGORI */}
-          <select
+          <CustomSelect
             value={kategori}
-            onChange={(e) =>
-              setKategori(
-                e.target.value
-              )
-            }
-            className="
-              bg-white
-              rounded-2xl
-              px-4 py-4
-              outline-none
-              text-sm
-              text-gray-700
-              shadow-sm
-            "
-          >
-            <option>
-              Semua Kategori
-            </option>
-
-            <option>
-              Data
-            </option>
-
-            <option>
-              IT
-            </option>
-
-            <option>
-              Design
-            </option>
-
-          </select>
-
+            options={KATEGORI_OPTIONS}
+            onChange={handleKategoriChange}
+          />
         </div>
 
         {/* POPULAR SEARCH */}
         <div className="flex flex-wrap items-center gap-3 mt-5">
-
           <p className="text-sm font-semibold text-white">
             Paling sering dicari:
           </p>
@@ -347,9 +510,7 @@ export default function JobsPage() {
           {POPULAR_SEARCH.map((item) => (
             <button
               key={item}
-              onClick={() =>
-                setKeyword(item)
-              }
+              onClick={() => handleKeywordChange(item)}
               className="
                 px-4 py-2
                 rounded-full
@@ -365,22 +526,22 @@ export default function JobsPage() {
               {item}
             </button>
           ))}
-
         </div>
-
       </div>
 
       {/* RESULT */}
       <div className="mb-6">
-
         <p className="text-sm text-gray-500">
-          Menampilkan{" "}
-          <span className="font-bold text-gray-800">
-            {filteredJobs.length}
-          </span>{" "}
-          lowongan pekerjaan
+          {isLoading ? (
+            "Memuat lowongan pekerjaan..."
+          ) : (
+            <>
+              Menampilkan{" "}
+              <span className="font-bold text-gray-800">{totalJobs}</span>{" "}
+              lowongan pekerjaan
+            </>
+          )}
         </p>
-
       </div>
 
       {/* JOB GRID */}
@@ -393,22 +554,15 @@ export default function JobsPage() {
           gap-6
         "
       >
-
-        {paginatedJobs.map((job) => {
-          const isSaved =
-            savedJobs.some(
-              (item) =>
-                item.id === job.id
-            );
+        {jobs.map((job) => {
+          const isSaved = savedJobs.some(
+            (item) => getSavedJobId(item) === job.id
+          );
 
           return (
             <div
               key={job.id}
-              onClick={() =>
-                navigate(
-                  `/jobs/${job.id}`
-                )
-              }
+              onClick={() => navigate(`/jobs/${job.id}`)}
               className="
                 bg-white
                 rounded-[32px]
@@ -421,10 +575,8 @@ export default function JobsPage() {
                 cursor-pointer
               "
             >
-
               {/* TOP */}
               <div className="flex justify-between items-start">
-
                 <div
                   className="
                     w-14 h-14
@@ -433,20 +585,13 @@ export default function JobsPage() {
                     flex items-center justify-center
                   "
                 >
-                  <Briefcase
-                    size={24}
-                    className="text-[#8B1A1A]"
-                  />
+                  <Briefcase size={24} className="text-[#8B1A1A]" />
                 </div>
 
                 {/* SAVE */}
                 <button
-                  onClick={(e) =>
-                    handleSaveJob(
-                      e,
-                      job
-                    )
-                  }
+                  onClick={(e) => handleSaveJob(e, job)}
+                  disabled={isSaving === job.id}
                   className={`
                     w-11 h-11
                     rounded-2xl
@@ -462,21 +607,14 @@ export default function JobsPage() {
                 >
                   <Bookmark
                     size={18}
-                    fill={
-                      isSaved
-                        ? "currentColor"
-                        : "none"
-                    }
+                    fill={isSaved ? "currentColor" : "none"}
                   />
                 </button>
-
               </div>
 
               {/* CONTENT */}
               <div className="mt-6">
-
                 <div className="flex flex-wrap gap-2 mb-4">
-
                   <span
                     className="
                       px-3 py-1
@@ -502,7 +640,6 @@ export default function JobsPage() {
                   >
                     {job.kategori}
                   </span>
-
                 </div>
 
                 <h2
@@ -515,15 +652,11 @@ export default function JobsPage() {
                   {job.judul}
                 </h2>
 
-                <p className="text-gray-500 mt-1">
-                  {job.perusahaan}
-                </p>
-
+                <p className="text-gray-500 mt-1">{job.perusahaan}</p>
               </div>
 
               {/* INFO */}
               <div className="mt-6 space-y-3">
-
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   <MapPin size={16} />
                   {job.lokasi}
@@ -538,7 +671,6 @@ export default function JobsPage() {
                   <GraduationCap size={16} />
                   {job.pendidikan}
                 </div>
-
               </div>
 
               {/* BUTTON */}
@@ -557,15 +689,13 @@ export default function JobsPage() {
               >
                 Lihat Detail
               </button>
-
             </div>
           );
         })}
-
       </div>
 
       {/* EMPTY */}
-      {filteredJobs.length === 0 && (
+      {!isLoading && jobs.length === 0 && (
         <div
           className="
             bg-white
@@ -576,15 +706,13 @@ export default function JobsPage() {
             mt-6
           "
         >
-
           <h3 className="text-xl font-bold text-gray-800">
-            Lowongan tidak ditemukan
+            {errorMessage ? "Gagal memuat lowongan" : "Lowongan tidak ditemukan"}
           </h3>
 
           <p className="text-gray-500 mt-2">
-            Coba gunakan kata kunci lain
+            {errorMessage || "Coba gunakan kata kunci lain"}
           </p>
-
         </div>
       )}
 
@@ -597,17 +725,10 @@ export default function JobsPage() {
             mt-10
           "
         >
-
           {/* PREV */}
           <button
-            disabled={
-              currentPage === 1
-            }
-            onClick={() =>
-              setCurrentPage(
-                currentPage - 1
-              )
-            }
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage(currentPage - 1)}
             className="
               w-11 h-11
               rounded-2xl
@@ -635,15 +756,8 @@ export default function JobsPage() {
 
           {/* NEXT */}
           <button
-            disabled={
-              currentPage ===
-              totalPages
-            }
-            onClick={() =>
-              setCurrentPage(
-                currentPage + 1
-              )
-            }
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage(currentPage + 1)}
             className="
               w-11 h-11
               rounded-2xl
@@ -655,10 +769,8 @@ export default function JobsPage() {
           >
             <ChevronRight size={18} />
           </button>
-
         </div>
       )}
-
     </div>
   );
 }
