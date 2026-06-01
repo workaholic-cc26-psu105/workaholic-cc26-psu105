@@ -1,9 +1,0 @@
-services:
-  - type: web
-    name: workaholic-api
-    env: docker
-    plan: starter
-    dockerfilePath: Dockerfile
-    envVars:
-      - key: PORT
-        value: 8080
