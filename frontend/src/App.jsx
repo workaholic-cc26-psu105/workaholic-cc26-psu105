@@ -9,6 +9,7 @@ import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 import HomePage from "./pages/HomePage";
 import JobsPage from "./pages/JobsPage";
@@ -64,6 +65,13 @@ export default function App() {
           element={
             <ForgotPasswordPage />
           }
+        />
+
+        <Route
+          path="/reset-password" 
+          element={
+            <ResetPasswordPage />
+          } 
         />
 
         {/* PRIVATE */}
