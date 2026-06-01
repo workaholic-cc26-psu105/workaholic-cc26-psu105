@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+
 const healthRoutes = require("./routes/health.routes");
 const jobsRoutes = require("./routes/jobs.routes");
 const savedJobsRoutes = require("./routes/savedJobs.routes");
@@ -12,7 +13,10 @@ const avatarRoutes = require("./routes/avatar.routes");
 const app = express();
 
 app.use(cors());
-app.use(express.json());
+
+// FIX: supaya request profile/avatar base64 tidak ditolak karena ukuran body terlalu kecil
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 app.use("/api", healthRoutes);
 app.use("/api", authRoutes);
@@ -27,7 +31,7 @@ app.get("/", (req, res) => {
   res.json({
     success: true,
     message: "Workaholic Backend API is running",
-    data: null
+    data: null,
   });
 });
 
