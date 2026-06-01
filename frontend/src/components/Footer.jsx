@@ -61,7 +61,7 @@ export default function Footer() {
               Workaholic membantu kandidat menemukan pekerjaan
               terbaik melalui analisis CV berbasis AI,
               ATS checking, dan job matching yang lebih cerdas
-              dan modern.
+              dan modern
             </p>
 
             {/* mini badge */}
@@ -109,7 +109,7 @@ export default function Footer() {
 
                 {[
                   { label: "Lowongan", path: "/jobs" },
-                  { label: "Wishlist", path: "/wishlist" },
+                  { label: "Tersimpan", path: "/saved" },
                   { label: "Upload CV", path: "/analysis" },
                 ].map((item) => (
                   <button

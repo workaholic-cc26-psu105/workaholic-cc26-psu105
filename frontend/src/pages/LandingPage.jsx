@@ -105,7 +105,7 @@ const Hero = ({ navigate }) => {
           </div>
 
           <h1 className="text-4xl md:text-6xl font-extrabold text-gray-900 leading-[1.15] mb-8 tracking-tight">
-            Mulai Karier Pertama
+            Mulai Karier Pertama{" "}
             <br className="hidden lg:block" />
             dengan Lebih Pasti
           </h1>
