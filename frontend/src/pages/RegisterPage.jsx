@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Navbar from "../components/Navbar";
+import LandingNavbar from "../components/LandingNavbar";
 import CopyrightFooter from "../components/CopyrightFooter";
+import { apiRequest } from "../services/api";
 
 // ── MAIN PAGE ────────────────────────────────────
 export default function RegisterPage() {
@@ -40,7 +41,6 @@ export default function RegisterPage() {
 
     setError("");
 
-    // Validasi kosong
     if (
       !formData.nama ||
       !formData.email ||
@@ -51,19 +51,16 @@ export default function RegisterPage() {
       return;
     }
 
-    // Validasi email
     if (!/\S+@\S+\.\S+/.test(formData.email)) {
       setError("Format email tidak valid.");
       return;
     }
 
-    // Validasi password
     if (formData.password.length < 8) {
       setError("Kata sandi minimal 8 karakter.");
       return;
     }
 
-    // Konfirmasi password
     if (formData.password !== formData.konfirmasiPassword) {
       setError("Konfirmasi kata sandi tidak cocok.");
       return;
@@ -71,23 +68,60 @@ export default function RegisterPage() {
 
     setIsLoading(true);
 
-    // Simulasi register
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const result = await apiRequest("/auth/register", {
+        method: "POST",
+        body: JSON.stringify({
+          nama: formData.nama,
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
 
-      // munculkan popup sukses
+      if (result.data?.token) {
+        localStorage.setItem("token", result.data.token);
+      }
+
+      if (result.data) {
+        localStorage.setItem(
+          "user",
+          JSON.stringify({
+            id: result.data.id,
+            nama: result.data.nama,
+            email: result.data.email,
+          })
+        );
+
+        localStorage.setItem(
+          "userProfile",
+          JSON.stringify({
+            id: result.data.id,
+            nama: result.data.nama,
+            email: result.data.email,
+          })
+        );
+      }
+
       setIsSuccess(true);
-    }, 1200);
+
+      setTimeout(() => {
+        navigate("/home");
+      }, 1500);
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen flex flex-col font-sans antialiased">
 
       {/* Navbar */}
-      <Navbar />
+      <LandingNavbar fixed />
 
       {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center bg-[#F0F0F0] py-10 px-4">
+      <main className="flex-1 flex items-center justify-center bg-[#F0F0F0] pt-32 pb-10">
 
         {/* Register Card */}
         <div className="w-full max-w-xl bg-white rounded-[32px] shadow-xl px-10 py-12">
@@ -353,15 +387,15 @@ export default function RegisterPage() {
               </h2>
 
               <p className="text-sm text-gray-500 text-center leading-relaxed mb-8">
-                Akun kamu berhasil dibuat. Silakan masuk untuk melanjutkan.
+                Akun kamu berhasil dibuat dan siap digunakan.
               </p>
 
               {/* Button */}
               <button
-                onClick={() => navigate("/login")}
+                onClick={() => navigate("/home")}
                 className="w-full py-3.5 bg-[#8B1A1A] text-white font-bold rounded-xl hover:bg-[#701515] transition-all"
               >
-                Masuk Sekarang
+                Masuk ke Home
               </button>
 
             </div>

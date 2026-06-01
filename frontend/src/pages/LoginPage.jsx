@@ -1,7 +1,8 @@
 import { useState } from "react";
-import Navbar from "../components/Navbar";
+import LandingNavbar from "../components/LandingNavbar";
 import CopyrightFooter from "../components/CopyrightFooter";
 import { useNavigate } from "react-router-dom";
+import { apiRequest } from "../services/api";
 
 // ── MAIN PAGE ────────────────────────────────────
 export default function LoginPage() {
@@ -13,34 +14,47 @@ export default function LoginPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Handle submit login
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setErrorMsg("");
+// Handle submit login
+const handleLogin = async (e) => {
+  e.preventDefault();
+  setErrorMsg("");
 
-    // Validasi sederhana
-    if (!email || !password) {
-      setErrorMsg("Email dan kata sandi tidak boleh kosong.");
-      return;
-    }
+  if (!email || !password) {
+    setErrorMsg("Email dan kata sandi tidak boleh kosong.");
+    return;
+  }
 
-    setIsLoading(true);
+  setIsLoading(true);
 
-    // Simulasi login
-    setTimeout(() => {
-      setIsLoading(false);
-      setErrorMsg("Kata sandi salah. Silakan coba lagi.");
-    }, 1000);
-  };
+  try {
+    const result = await apiRequest("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({
+        email,
+        password,
+      }),
+    });
+
+    localStorage.setItem("token", result.token);
+    localStorage.setItem("user", JSON.stringify(result.data));
+    localStorage.setItem("userProfile", JSON.stringify(result.data));
+
+    navigate("/home");
+  } catch (error) {
+    setErrorMsg(error.message);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen flex flex-col font-sans antialiased">
 
       {/* Navbar */}
-      <Navbar />
+      <LandingNavbar fixed />
 
       {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center bg-[#F0F0F0] py-10">
+      <main className="flex-1 flex items-center justify-center bg-[#F0F0F0] pt-32 pb-10">
         <div className="w-full max-w-xl bg-white rounded-[32px] shadow-xl px-10 py-12">
 
           {/* Judul */}
@@ -81,7 +95,9 @@ export default function LoginPage() {
           {/* Separator */}
           <div className="flex items-center gap-4 mb-6">
             <div className="flex-1 h-px bg-gray-200" />
-            <span className="text-sm text-gray-400 font-medium">atau</span>
+            <span className="text-sm text-gray-400 font-medium">
+              atau
+            </span>
             <div className="flex-1 h-px bg-gray-200" />
           </div>
 
