@@ -241,7 +241,7 @@ export default function Topbar() {
           </button>
 
           {showNotif && (
-            <div className="absolute right-0 top-16 w-[340px] bg-white rounded-3xl border border-gray-100 shadow-xl overflow-hidden z-50">
+            <div className="fixed sm:absolute right-2 sm:right-0 top-20 sm:top-16 w-[calc(100vw-1rem)] sm:w-[340px] max-w-[340px] bg-white rounded-3xl border border-gray-100 shadow-xl overflow-hidden z-50">
               <div className="p-5 border-b border-gray-100">
                 <h3 className="font-black text-lg text-gray-900">
                   Notifikasi
