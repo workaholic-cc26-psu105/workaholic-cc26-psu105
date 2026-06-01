@@ -1,16 +1,41 @@
 const supabase = require("../config/supabase");
 
-const getUserProfile = async (userId) => {
-  const { data: profile, error } = await supabase
+const getAuthUserInfo = (authUser) => {
+  if (typeof authUser === "string") {
+    return {
+      id: authUser,
+      email: "",
+      nama: "User",
+      role: "Fresh Graduate",
+    };
+  }
+
+  return {
+    id: authUser?.id,
+    email: authUser?.email || "",
+    nama:
+      authUser?.user_metadata?.nama ||
+      authUser?.user_metadata?.name ||
+      "User",
+    role: authUser?.user_metadata?.role || "Fresh Graduate",
+  };
+};
+
+const getProfileFromUserProfiles = async (userId) => {
+  const { data, error } = await supabase
     .from("user_profiles")
     .select("*")
     .eq("id", userId)
-    .single();
+    .maybeSingle();
 
   if (error) {
     throw new Error(error.message);
   }
 
+  return data;
+};
+
+const getStats = async (userId) => {
   const { count: savedJobsCount } = await supabase
     .from("wishlists")
     .select("id", { count: "exact", head: true })
@@ -30,51 +55,75 @@ const getUserProfile = async (userId) => {
     .maybeSingle();
 
   return {
-    id: profile.id,
-    nama: profile.nama,
-    email: profile.email,
-    phone: profile.phone,
-    location: profile.location,
-    role: profile.role,
-    education: profile.education,
-    bio: profile.bio,
-    avatar: profile.avatar,
-    skills: profile.skills || [],
-    stats: {
-      saved_jobs_count: savedJobsCount || 0,
-      applied_count: 0,
-      cv_analysis_count: cvAnalysisCount || 0,
-      ats_score: latestAnalysis?.analysis_result?.ats_score || 0,
-    },
+    saved_jobs_count: savedJobsCount || 0,
+    applied_count: 0,
+    cv_analysis_count: cvAnalysisCount || 0,
+    ats_score: latestAnalysis?.analysis_result?.ats_score || 0,
   };
 };
 
-const updateUserProfile = async (userId, payload) => {
-  const allowedFields = [
-    "nama",
-    "phone",
-    "location",
-    "role",
-    "education",
-    "bio",
-    "skills",
-    "avatar",
-  ];
+const normalizeProfileResponse = async (authInfo, profile) => {
+  const stats = await getStats(authInfo.id);
 
-  const updateData = {};
+  return {
+    id: authInfo.id,
+    nama: profile?.nama || authInfo.nama || "User",
+    email: profile?.email || authInfo.email || "",
+    phone: profile?.phone || "",
+    location: profile?.location || "",
+    role: profile?.role || authInfo.role || "Fresh Graduate",
+    education: profile?.education || "",
+    bio: profile?.bio || "",
+    avatar: profile?.avatar || null,
+    skills: Array.isArray(profile?.skills) ? profile.skills : [],
+    stats,
+  };
+};
 
-  allowedFields.forEach((field) => {
-    if (payload[field] !== undefined) {
-      updateData[field] = payload[field];
-    }
-  });
+const getUserProfile = async (authUser) => {
+  const authInfo = getAuthUserInfo(authUser);
 
-  updateData.updated_at = new Date().toISOString();
+  if (!authInfo.id) {
+    throw new Error("User tidak valid");
+  }
 
-  const { data, error } = await supabase
+  const profile = await getProfileFromUserProfiles(authInfo.id);
+
+  return normalizeProfileResponse(authInfo, profile);
+};
+
+const updateUserProfile = async (authUser, payload) => {
+  const authInfo = getAuthUserInfo(authUser);
+
+  if (!authInfo.id) {
+    throw new Error("User tidak valid");
+  }
+
+  const oldProfile = await getProfileFromUserProfiles(authInfo.id);
+
+  const profileData = {
+    id: authInfo.id,
+    nama: payload.nama ?? oldProfile?.nama ?? authInfo.nama ?? "User",
+    email: oldProfile?.email ?? authInfo.email ?? payload.email ?? "",
+    phone: payload.phone ?? oldProfile?.phone ?? "",
+    location: payload.location ?? oldProfile?.location ?? "",
+    role: payload.role ?? oldProfile?.role ?? authInfo.role ?? "Fresh Graduate",
+    education: payload.education ?? oldProfile?.education ?? "",
+    bio: payload.bio ?? oldProfile?.bio ?? "",
+    skills: Array.isArray(payload.skills)
+      ? payload.skills
+      : Array.isArray(oldProfile?.skills)
+      ? oldProfile.skills
+      : [],
+    avatar: payload.avatar ?? oldProfile?.avatar ?? null,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data: updatedProfile, error } = await supabase
     .from("user_profiles")
-    .update(updateData)
-    .eq("id", userId)
+    .upsert(profileData, {
+      onConflict: "id",
+    })
     .select("*")
     .single();
 
@@ -82,7 +131,7 @@ const updateUserProfile = async (userId, payload) => {
     throw new Error(error.message);
   }
 
-  return data;
+  return normalizeProfileResponse(authInfo, updatedProfile);
 };
 
 module.exports = {
