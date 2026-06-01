@@ -2,16 +2,18 @@ const userService = require("../services/user.service");
 
 const getUserProfile = async (req, res) => {
   try {
-    const profile = await userService.getUserProfile(req.user.id);
+    const profile = await userService.getUserProfile(req.user);
 
     res.json({
       success: true,
       data: profile,
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("GET PROFILE ERROR:", error.message);
+
+    res.status(error.statusCode || 500).json({
       success: false,
-      message: "Terjadi kesalahan pada server",
+      message: error.message || "Terjadi kesalahan pada server",
     });
   }
 };
@@ -19,7 +21,7 @@ const getUserProfile = async (req, res) => {
 const updateUserProfile = async (req, res) => {
   try {
     const updatedProfile = await userService.updateUserProfile(
-      req.user.id,
+      req.user,
       req.body
     );
 
@@ -29,9 +31,11 @@ const updateUserProfile = async (req, res) => {
       data: updatedProfile,
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("UPDATE PROFILE ERROR:", error.message);
+
+    res.status(error.statusCode || 500).json({
       success: false,
-      message: "Terjadi kesalahan pada server",
+      message: error.message || "Terjadi kesalahan pada server",
     });
   }
 };
