@@ -101,10 +101,7 @@ const login = async (payload) => {
 };
 
 const forgotPassword = async (payload) => {
-  const email =
-    typeof payload === "string"
-      ? payload
-      : payload?.email;
+  const email = typeof payload === "string" ? payload : payload?.email;
 
   if (!email) {
     const error = new Error("Email wajib diisi");
@@ -112,7 +109,7 @@ const forgotPassword = async (payload) => {
     throw error;
   }
 
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const frontendUrl = getFrontendUrl();
 
   const { error: resetError } = await supabase.auth.resetPasswordForEmail(
     email,
@@ -135,7 +132,16 @@ const forgotPassword = async (payload) => {
 const resetPassword = async (payload) => {
   const accessToken = payload.accessToken || payload.access_token;
   const refreshToken = payload.refreshToken || payload.refresh_token;
-  const password = payload.password || payload.newPassword || payload.new_password;
+  const password =
+    payload.password || payload.newPassword || payload.new_password;
+
+  if (!accessToken || !refreshToken) {
+    const error = new Error(
+      "Token reset password tidak valid atau sudah kedaluwarsa"
+    );
+    error.statusCode = 400;
+    throw error;
+  }
 
   if (!password) {
     const error = new Error("Password baru wajib diisi");
@@ -143,17 +149,21 @@ const resetPassword = async (payload) => {
     throw error;
   }
 
-  if (accessToken && refreshToken) {
-    const { error: sessionError } = await supabase.auth.setSession({
-      access_token: accessToken,
-      refresh_token: refreshToken,
-    });
+  if (password.length < 8) {
+    const error = new Error("Password minimal 8 karakter");
+    error.statusCode = 400;
+    throw error;
+  }
 
-    if (sessionError) {
-      const error = new Error(sessionError.message);
-      error.statusCode = 400;
-      throw error;
-    }
+  const { error: sessionError } = await supabase.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  });
+
+  if (sessionError) {
+    const error = new Error(sessionError.message);
+    error.statusCode = 400;
+    throw error;
   }
 
   const { error: updateError } = await supabase.auth.updateUser({

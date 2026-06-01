@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import LandingNavbar from "../components/LandingNavbar";
 import CopyrightFooter from "../components/CopyrightFooter";
+import { apiRequest } from "../services/api";
 
-// ── EYE ICON ─────────────────────────────────────
 function EyeIcon({ show }) {
   return show ? (
     <svg
@@ -43,20 +43,15 @@ function EyeIcon({ show }) {
   );
 }
 
-// ── SUCCESS MODAL ────────────────────────────────
 function SuccessModal() {
   const navigate = useNavigate();
 
   return (
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-      <div className="bg-white rounded-[28px] shadow-2xl p-8 w-full max-w-sm text-center animate-in fade-in zoom-in duration-300">
+      <div className="bg-white rounded-[28px] shadow-2xl p-8 w-full max-w-sm text-center">
         <div className="flex justify-center mb-5">
           <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              className="w-8 h-8"
-            >
+            <svg viewBox="0 0 24 24" fill="none" className="w-8 h-8">
               <path
                 d="M7 12.5l3 3 7-7"
                 stroke="#22C55E"
@@ -87,8 +82,51 @@ function SuccessModal() {
   );
 }
 
-// ── MAIN PAGE ────────────────────────────────────
+const getResetPasswordParams = () => {
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const queryParams = new URLSearchParams(window.location.search);
+
+  const errorDescription =
+    hashParams.get("error_description") ||
+    queryParams.get("error_description");
+
+  if (errorDescription) {
+    return {
+      accessToken: "",
+      refreshToken: "",
+      tokenError:
+        errorDescription.replace(/\+/g, " ") ||
+        "Link reset password tidak valid atau sudah kedaluwarsa.",
+    };
+  }
+
+  const accessToken =
+    hashParams.get("access_token") || queryParams.get("access_token");
+
+  const refreshToken =
+    hashParams.get("refresh_token") || queryParams.get("refresh_token");
+
+  if (!accessToken || !refreshToken) {
+    return {
+      accessToken: "",
+      refreshToken: "",
+      tokenError:
+        "Link reset password tidak valid atau sudah kedaluwarsa. Silakan minta link reset password baru.",
+    };
+  }
+
+  return {
+    accessToken,
+    refreshToken,
+    tokenError: "",
+  };
+};
+
 export default function ResetPasswordPage() {
+  const navigate = useNavigate();
+
+  const [resetToken] = useState(() => getResetPasswordParams());
+
   const [password, setPassword] = useState("");
   const [konfirmasi, setKonfirmasi] = useState("");
 
@@ -97,13 +135,21 @@ export default function ResetPasswordPage() {
 
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-
   const [isSuccess, setIsSuccess] = useState(false);
+
+  const { accessToken, refreshToken, tokenError } = resetToken;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     setError("");
+
+    if (tokenError || !accessToken || !refreshToken) {
+      setError(
+        "Token reset password tidak valid. Silakan minta link reset password baru."
+      );
+      return;
+    }
 
     if (!password || !konfirmasi) {
       setError("Semua kolom wajib diisi.");
@@ -120,25 +166,37 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    setIsLoading(true);
+    try {
+      setIsLoading(true);
 
-    setTimeout(() => {
-      setIsLoading(false);
+      await apiRequest("/auth/reset-password", {
+        method: "POST",
+        body: JSON.stringify({
+          accessToken,
+          refreshToken,
+          password,
+        }),
+      });
+
+      window.history.replaceState(null, "", "/reset-password");
+
       setIsSuccess(true);
-    }, 1000);
+    } catch (err) {
+      setError(
+        err.message ||
+          "Gagal memperbarui kata sandi. Silakan minta link reset password baru."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F4F4F4]">
-
-      {/* NAVBAR */}
       <LandingNavbar fixed />
 
-      {/* CONTENT */}
       <main className="flex-1 flex items-center justify-center px-4 pt-28 pb-16">
-
         <div className="w-full max-w-lg bg-white rounded-[28px] shadow-xl p-8 md:p-10">
-
           <h1 className="text-3xl font-extrabold text-[#8B1A1A] text-center mb-2">
             Reset Kata Sandi
           </h1>
@@ -147,104 +205,101 @@ export default function ResetPasswordPage() {
             Masukkan kata sandi baru untuk akun kamu
           </p>
 
-          <form
-            onSubmit={handleSubmit}
-            className="space-y-5"
-          >
-
-            {/* PASSWORD */}
-            <div>
-              <label className="block text-sm font-bold text-[#8B1A1A] mb-2">
-                Kata sandi baru
-              </label>
-
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) =>
-                    setPassword(e.target.value)
-                  }
-                  placeholder="Minimal 8 karakter"
-                  className="w-full bg-gray-100 rounded-xl px-4 py-3 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B1A1A]/30"
-                />
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setShowPassword(!showPassword)
-                  }
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
-                >
-                  <EyeIcon show={showPassword} />
-                </button>
+          {tokenError ? (
+            <div className="space-y-5">
+              <div className="bg-red-50 border border-red-100 rounded-2xl px-4 py-4">
+                <p className="text-center text-red-600 text-sm font-semibold">
+                  {tokenError}
+                </p>
               </div>
+
+              <button
+                type="button"
+                onClick={() => navigate("/forgot-password")}
+                className="w-full py-3.5 bg-[#8B1A1A] text-white font-bold rounded-xl hover:bg-[#701515] transition-all"
+              >
+                Minta Link Baru
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigate("/login")}
+                className="w-full text-sm font-semibold text-gray-500 hover:text-[#8B1A1A] transition"
+              >
+                Kembali ke Login
+              </button>
             </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="block text-sm font-bold text-[#8B1A1A] mb-2">
+                  Kata sandi baru
+                </label>
 
-            {/* KONFIRMASI */}
-            <div>
-              <label className="block text-sm font-bold text-[#8B1A1A] mb-2">
-                Konfirmasi kata sandi baru
-              </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Minimal 8 karakter"
+                    className="w-full bg-gray-100 rounded-xl px-4 py-3 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B1A1A]/30"
+                  />
 
-              <div className="relative">
-                <input
-                  type={
-                    showKonfirmasi
-                      ? "text"
-                      : "password"
-                  }
-                  value={konfirmasi}
-                  onChange={(e) =>
-                    setKonfirmasi(e.target.value)
-                  }
-                  placeholder="Ulangi kata sandi"
-                  className="w-full bg-gray-100 rounded-xl px-4 py-3 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B1A1A]/30"
-                />
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setShowKonfirmasi(
-                      !showKonfirmasi
-                    )
-                  }
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
-                >
-                  <EyeIcon show={showKonfirmasi} />
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
+                  >
+                    <EyeIcon show={showPassword} />
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {/* ERROR */}
-            {error && (
-              <p className="text-center text-red-500 text-sm font-semibold">
-                {error}
-              </p>
-            )}
+              <div>
+                <label className="block text-sm font-bold text-[#8B1A1A] mb-2">
+                  Konfirmasi kata sandi baru
+                </label>
 
-            {/* BUTTON */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-3.5 bg-[#8B1A1A] text-white font-bold rounded-xl hover:bg-[#701515] transition-all disabled:opacity-60"
-            >
-              {isLoading
-                ? "Menyimpan..."
-                : "Atur ulang kata sandi"}
-            </button>
+                <div className="relative">
+                  <input
+                    type={showKonfirmasi ? "text" : "password"}
+                    value={konfirmasi}
+                    onChange={(e) => setKonfirmasi(e.target.value)}
+                    placeholder="Ulangi kata sandi"
+                    className="w-full bg-gray-100 rounded-xl px-4 py-3 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B1A1A]/30"
+                  />
 
-          </form>
+                  <button
+                    type="button"
+                    onClick={() => setShowKonfirmasi(!showKonfirmasi)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
+                  >
+                    <EyeIcon show={showKonfirmasi} />
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <p className="text-center text-red-500 text-sm font-semibold">
+                  {error}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-3.5 bg-[#8B1A1A] text-white font-bold rounded-xl hover:bg-[#701515] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isLoading ? "Menyimpan..." : "Atur ulang kata sandi"}
+              </button>
+            </form>
+          )}
         </div>
-
       </main>
 
-      {/* FOOTER */}
       <CopyrightFooter />
 
-      {/* SUCCESS POPUP */}
       {isSuccess && <SuccessModal />}
-
     </div>
   );
 }
