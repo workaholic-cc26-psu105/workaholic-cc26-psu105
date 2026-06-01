@@ -69,13 +69,11 @@ The main goals of Workaholic are:
 
 ## 🚀 Live Demo
 
-| Platform    | Link                                    |
-| ----------- | --------------------------------------- |
-| Frontend    | Add your frontend deployment link here  |
-| Backend API | Add your backend deployment link here   |
-| AI Service  | https://syiifac-workaholic-api.hf.space |
-
-> Replace the frontend and backend links with your actual deployment URLs.
+| Platform    | Link                                                     |
+| ----------- | ---------------------------------------------------------|
+| Frontend    | https://workaholic-cc26-psu105.netlify.app/              |
+| Backend API | https://workaholic-cc26-psu105-production.up.railway.app |
+| AI Service  | https://syiifac-workaholic-api.hf.space                  |
 
 ---
 
@@ -133,8 +131,8 @@ The main goals of Workaholic are:
 
 | Frontend     | Backend    | Database            | AI Service              | Deployment       |
 | ------------ | ---------- | ------------------- | ----------------------- | ---------------- |
-| React        | Node.js    | Supabase PostgreSQL | Python Model API        | Vercel / Netlify |
-| Vite         | Express.js | Supabase Auth       | Hugging Face Space      | Render / Railway |
+| React        | Node.js    | Supabase PostgreSQL | Python Model API        | Netlify          |
+| Vite         | Express.js | Supabase Auth       | Hugging Face Space      | Railway          |
 | Tailwind CSS | Multer     | Supabase Storage    | CV Recommendation Model | Supabase         |
 | Axios        | CORS       | PostgreSQL          | Job Classifier Model    |                  |
 
