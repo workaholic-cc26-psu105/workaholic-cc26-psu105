@@ -2,11 +2,9 @@
 
 <!-- Workaholic Logo -->
 
-<!-- Replace the image path below with your actual logo path if needed -->
+<img src="docs/assets/workaholic-logo.png" alt="Workaholic Logo" width="500"/>
 
-<img src="docs/assets/workaholic-logo.png" alt="Workaholic Logo" width="140"/>
-
-# 💼 Workaholic
+# 💼 WORKAHOLIC
 
 ### AI-Powered Job Recommendation Platform for Fresh Graduates
 
@@ -45,7 +43,7 @@ This platform allows users to upload their CV, receive AI-based CV analysis, exp
 
 Workaholic was developed as part of the **Coding Camp 2026 - Full Stack Web Developer Learning Path** capstone project.
 
-> “Helping fresh graduates discover better career opportunities through technology and AI.”
+> "Helping fresh graduates discover better career opportunities through technology and AI."
 
 ---
 
@@ -71,13 +69,42 @@ The main goals of Workaholic are:
 
 ## 🚀 Live Demo
 
-| Platform    | Link                                    |
-| ----------- | --------------------------------------- |
-| Frontend    | Add your frontend deployment link here  |
-| Backend API | Add your backend deployment link here   |
-| AI Service  | https://syiifac-workaholic-api.hf.space |
+| Platform    | Link                                                     |
+| ----------- | ---------------------------------------------------------|
+| Frontend    | https://workaholic-cc26-psu105.netlify.app/              |
+| Backend API | https://workaholic-cc26-psu105-production.up.railway.app |
+| AI Service  | https://syiifac-workaholic-api.hf.space                  |
 
-> Replace the frontend and backend links with your actual deployment URLs.
+---
+
+## 🖼️ Screenshots
+
+### 1. Landing Page
+![Landing Page](docs/screenshots/landing-page.png)
+
+### 2. Login Page
+![Login Page](docs/screenshots/login-page.png)
+
+### 3. Dashboard
+![Dashboard](docs/screenshots/dashboard.png)
+
+### 4. Upload CV
+![Upload CV](docs/screenshots/upload-cv.png)
+
+### 5. CV Review
+![CV Review](docs/screenshots/cv-review.png)
+
+### 6. Jobs Page
+![Jobs Page](docs/screenshots/jobs-page.png)
+
+### 7. Job Detail
+![Job Detail](docs/screenshots/job-detail.png)
+
+### 8. Saved Jobs
+![Saved Jobs](docs/screenshots/saved-jobs.png)
+
+### 9. Profile Page
+![Profile Page](docs/screenshots/profile-page.png)
 
 ---
 
@@ -104,8 +131,8 @@ The main goals of Workaholic are:
 
 | Frontend     | Backend    | Database            | AI Service              | Deployment       |
 | ------------ | ---------- | ------------------- | ----------------------- | ---------------- |
-| React        | Node.js    | Supabase PostgreSQL | Python Model API        | Vercel / Netlify |
-| Vite         | Express.js | Supabase Auth       | Hugging Face Space      | Render / Railway |
+| React        | Node.js    | Supabase PostgreSQL | Python Model API        | Netlify          |
+| Vite         | Express.js | Supabase Auth       | Hugging Face Space      | Railway          |
 | Tailwind CSS | Multer     | Supabase Storage    | CV Recommendation Model | Supabase         |
 | Axios        | CORS       | PostgreSQL          | Job Classifier Model    |                  |
 
@@ -479,24 +506,6 @@ http://localhost:5173
 | `npm run build`   | Build frontend for production    |
 | `npm run preview` | Preview production build locally |
 | `npm run lint`    | Run frontend linting             |
-
----
-
-## 🖼️ Screenshots
-
-Add your application screenshots here.
-
-```md
-![Landing Page](docs/screenshots/landing-page.png)
-![Login Page](docs/screenshots/login-page.png)
-![Dashboard](docs/screenshots/dashboard.png)
-![Upload CV](docs/screenshots/upload-cv.png)
-![CV Review](docs/screenshots/cv-review.png)
-![Jobs Page](docs/screenshots/jobs-page.png)
-![Job Detail](docs/screenshots/job-detail.png)
-![Saved Jobs](docs/screenshots/saved-jobs.png)
-![Profile Page](docs/screenshots/profile-page.png)
-```
 
 ---
 
