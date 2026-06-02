@@ -1,30 +1,24 @@
-# Proyek Analisis Data: E-Commerce Public Dataset
+# Proyek Analisis Data: Job Posting Indonesia
 
 ## 📂 Struktur Direktori
-```
 submission
 ├── dashboard
-│   ├── main_data.csv        <- Dataset terintegrasi siap pakai untuk dashboard
+│   ├── loker_clean.csv      <- Dataset bersih siap pakai untuk dashboard
 │   └── dashboard.py         <- Aplikasi Streamlit
 ├── data
-│   ├── customers_dataset.csv
-│   ├── geolocation_dataset.csv
-│   ├── order_items_dataset.csv
-│   ├── order_payments_dataset.csv
-│   ├── order_reviews_dataset.csv
-│   ├── orders_dataset.csv
-│   ├── products_dataset.csv
-│   ├── sellers_dataset.csv
-│   └── product_category_name_translation.csv
+│   ├── mergeFile.csv        <- Dataset mentah (unduh dari Kaggle: https://www.kaggle.com/datasets/azizainunnajib/jobs-crawling)
+│   └── loker_clean.csv      <- Dataset hasil preprocessing
 ├── notebook.ipynb
 ├── README.md
 ├── requirements.txt
 └── url.txt
-```
 
 ## ❓ Pertanyaan Bisnis
-1. Kategori produk apa yang menghasilkan revenue tertinggi pada periode **Januari 2017 – Agustus 2018**, dan bagaimana tren revenue bulanannya?
-2. Bagaimana hubungan antara ketepatan waktu pengiriman dengan skor ulasan pelanggan pada periode **Januari 2017 – Agustus 2018**, dan di negara bagian mana tingkat keterlambatan paling tinggi?
+1. Kategori pekerjaan apa yang paling banyak dibutuhkan di Indonesia berdasarkan data lowongan 2021-2022, dan apakah dominasi kategori tersebut konsisten di semua kota besar?
+2. Kota mana yang paling banyak membuka lowongan kerja di Indonesia berdasarkan data 2021-2022, dan bagaimana persebarannya dibandingkan dengan kota-kota di luar Pulau Jawa?
+3. Bagaimana perbandingan rata-rata kisaran gaji antar kategori pekerjaan di Indonesia berdasarkan data 2021-2022, dan kategori mana yang menawarkan gap terbesar antara gaji minimum dan maksimum?
+4. Apakah tipe pekerjaan (Full-time, Contract, Internship) berpengaruh terhadap kisaran gaji yang ditawarkan pada kategori yang sama?
+5. Bagaimana distribusi lowongan kerja berdasarkan tipe pekerjaan, dan apakah ada perbedaan signifikan antar kota?
 
 ---
 
@@ -52,12 +46,24 @@ pip install -r requirements.txt
 
 ---
 
+## 📥 Download Dataset
+
+Dataset mentah (`mergeFile.csv`) tidak disertakan di repositori ini karena ukurannya 285MB.
+Unduh terlebih dahulu dari Kaggle:
+
+🔗 https://www.kaggle.com/datasets/azizainunnajib/jobs-crawling
+
+Setelah diunduh, letakkan file `mergeFile.csv` di folder `data/`.
+
+---
+
 ## 🚀 Menjalankan Dashboard
 
 Pastikan virtual environment sudah aktif, lalu jalankan dari **root folder submission**:
 
 ```bash
-streamlit run dashboard/dashboard.py
+cd ds-dashboard
+python -m streamlit run dashboard/dashboard.py
 ```
 
 Buka browser di: **http://localhost:8501**
@@ -74,7 +80,6 @@ jupyter notebook notebook.ipynb
 
 ## 📊 Teknik Analisis yang Digunakan
 - **Data Wrangling**: Gathering, Assessing (info, describe, missing values, duplikat), Cleaning
-- **EDA**: Eksplorasi distribusi, korelasi, dan tren data
-- **Visualisasi**: Matplotlib & Seaborn
-- **RFM Analysis**: Segmentasi 7 grup pelanggan
-- **Geospatial Analysis**: Peta distribusi pelanggan berdasarkan lokasi geografis
+- **EDA**: Eksplorasi distribusi tipe pekerjaan, kelengkapan data, dan ketersediaan gaji
+- **Visualisasi & Explanatory Analysis**: Matplotlib & Seaborn
+- **Feature Engineering**: Label Encoding, TF-IDF Vectorization, MinMax Scaling

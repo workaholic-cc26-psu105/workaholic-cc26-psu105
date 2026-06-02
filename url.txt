@@ -1,2 +1,2 @@
-Dashboard URL: https://ecommerce-analytics-dashboard.streamlit.app
+Dashboard URL: https://submissionbfadfrida.streamlit.app/
 (Deploy ke Streamlit Cloud menggunakan file dashboard/dashboard.py)
