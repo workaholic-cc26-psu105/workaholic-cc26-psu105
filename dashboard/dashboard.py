@@ -198,7 +198,7 @@ def style_ax(ax, title='', xlabel='', ylabel=''):
 # ── Load Data ─────────────────────────────────────────────
 @st.cache_data
 def load_data():
-    df = pd.read_csv("loker_clean.csv", low_memory=False)
+    df = pd.read_csv('../data/loker_clean.csv', low_memory=False)
 
     df['main_category'] = df['categoriesName'].str.split(',').str[0].str.strip()
     df['main_location'] = df['locations'].str.split(',').str[0].str.strip()
