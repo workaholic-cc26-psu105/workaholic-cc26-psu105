@@ -101,7 +101,7 @@ The main goals of Workaholic are:
 ![Job Detail](docs/screenshots/job-detail.png)
 
 ### 8. Saved Jobs
-![Saved Jobs](docs/screenshots/saved-jobs.png)
+![Saved Jobs](docs/screenshots/saved-job.png)
 
 ### 9. Profile Page
 ![Profile Page](docs/screenshots/profile-page.png)
