@@ -133,6 +133,17 @@ except Exception as e:
     log.error(f'FATAL: Gagal load artifacts — {e}')
     raise
 
+# ── Gemini setup ──────────────────────────────────────────────────────────────
+from google import genai as genai_client
+
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+if GEMINI_API_KEY:
+    _genai = genai_client.Client(api_key=GEMINI_API_KEY)
+    log.info('Gemini API key loaded.')
+else:
+    _genai = None
+    log.warning('GEMINI_API_KEY tidak ditemukan. generate_saran() akan pakai fallback hardcoded.')
+
 # ── Utility functions ─────────────────────────────────────────────────────────
 
 def clean_text(text: str) -> str:
@@ -240,8 +251,7 @@ def extract_text_pdf(pdf_path: str) -> str:
     return ' '.join(p.extract_text() or '' for p in reader.pages).strip()
 
 
-
-
+# ── Hardcoded fallback saran ───────────────────────────────────────────────────
 CATEGORY_SARAN = {
     'Data Scientist'                : 'Perkuat skill machine learning, statistik, dan Python. Tambahkan portofolio proyek di Kaggle atau GitHub.',
     'Data Analyst'                  : 'Kuasai SQL, Excel, dan tools visualisasi seperti Tableau atau Power BI. Latih kemampuan storytelling data.',
@@ -261,11 +271,43 @@ CATEGORY_SARAN = {
     'ERP & CRM Specialist'          : 'Pelajari modul SAP atau Oracle lebih dalam, kuasai proses bisnis end-to-end.',
 }
 
+
+# ── generate_saran() dengan Gemini ────────────────────────────────────────────
 def generate_saran(category: str, skills: list) -> str:
-    base = CATEGORY_SARAN.get(category, 'Terus tingkatkan skill teknis dan portofolio Anda.')
-    if len(skills) < 3:
-        base += ' Tambahkan lebih banyak skill teknis yang relevan ke CV Anda.'
-    return base
+    """
+    Generate saran karier menggunakan Gemini AI.
+    Fallback ke hardcoded CATEGORY_SARAN jika API key tidak ada atau request gagal.
+    """
+    if not GEMINI_API_KEY:
+        # Fallback ke hardcoded kalau API key tidak ada
+        base = CATEGORY_SARAN.get(category, 'Terus tingkatkan skill teknis dan portofolio Anda.')
+        if len(skills) < 3:
+            base += ' Tambahkan lebih banyak skill teknis yang relevan ke CV Anda.'
+        return base
+
+    try:
+        skill_str = ', '.join(skills) if skills else 'belum terdeteksi'
+        prompt = (
+            f"Kamu adalah career advisor profesional di bidang teknologi.\n"
+            f"Berikan saran karier yang spesifik, praktis, dan memotivasi dalam 3-4 kalimat (Bahasa Indonesia).\n\n"
+            f"Profil kandidat:\n"
+            f"- Kategori pekerjaan: {category}\n"
+            f"- Skill terdeteksi: {skill_str}\n\n"
+            f"Fokus pada: skill yang perlu ditingkatkan, sertifikasi relevan, dan langkah konkret berikutnya."
+        )
+        response = _genai.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+        )
+        return response.text.strip()
+
+    except Exception as e:
+        log.warning(f'Gemini gagal, fallback ke hardcoded: {e}')
+        base = CATEGORY_SARAN.get(category, 'Terus tingkatkan skill teknis dan portofolio Anda.')
+        if len(skills) < 3:
+            base += ' Tambahkan lebih banyak skill teknis yang relevan ke CV Anda.'
+        return base
+
 
 # ── Flask App ─────────────────────────────────────────────────────────────────
 app = Flask(__name__)
@@ -290,6 +332,7 @@ def info():
         'total_jobs'       : len(jobs_meta),
         'supported_formats': ['pdf', 'text'],
         'api_version'      : '3.0',
+        'gemini_enabled'   : bool(GEMINI_API_KEY),
     }), 200
 
 
@@ -424,10 +467,11 @@ def file_too_large(e):
 
 if __name__ == '__main__':
     print('\n' + '=' * 55)
-    print('   WORKAHOLIC API v3.0 — BiLSTM')
+    print('   WORKAHOLIC API v3.0 — BiLSTM + Gemini')
     print('=' * 55)
     print(f'  Model     : Embedding + 2x BiLSTM + Dense')
     print(f'  Salary    : Statistical (P25-Median-P75)')
+    print(f'  Saran     : {"Gemini 2.0 Flash" if GEMINI_API_KEY else "Hardcoded (set GEMINI_API_KEY)"}')
     print(f'  Kategori  : {len(label_encoder.classes_)}')
     print(f'  Lowongan  : {len(jobs_meta):,}')
     print()
@@ -442,5 +486,3 @@ if __name__ == '__main__':
     print('  Server: http://localhost:5000')
     print('=' * 55 + '\n')
     app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
-
-
