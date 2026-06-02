@@ -5,8 +5,6 @@ import matplotlib.ticker as mticker
 import matplotlib.patches as mpatches
 import streamlit as st
 import os
-import gdown
-
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
