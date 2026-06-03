@@ -168,13 +168,21 @@ workaholic-cc26-psu105/
 │   └── package.json
 │
 ├── ml/
-│   └── AI model and service files
+│   ├── api/
+│   ├── model/
+│   ├── notebooks/
+│   ├── dockerfile
+│   ├── inference.py
+│   └── requirements.txt
 │
 ├── data/
 │   └── Dataset files
 │
 ├── docs/
-│   └── Documentation and screenshots
+│   ├── assets/
+│   ├── screenshots/
+│   ├── api-contract.md
+│   └── project-plan.md
 │
 └── README.md
 ```
