@@ -1,2 +1,2 @@
-Dashboard URL: https://submissionbfadfrida.streamlit.app/
+Dashboard URL: https://workaholic-cc26-psu105-dashboard.streamlit.app/
 (Deploy ke Streamlit Cloud menggunakan file dashboard/dashboard.py)
