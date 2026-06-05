@@ -141,42 +141,24 @@ The main goals of Workaholic are:
 ---
 
 ## 🗂️ Project Structure
-
 ```bash
 workaholic-cc26-psu105/
 │
 ├── backend/
-│   ├── controllers/
-│   ├── middlewares/
-│   ├── routes/
-│   ├── services/
-│   ├── utils/
-│   ├── app.js
-│   ├── server.js
-│   └── package.json
-│
-├── frontend/
-│   ├── public/
+│   ├── scripts/
 │   ├── src/
-│   │   ├── assets/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── services/
-│   │   ├── utils/
-│   │   ├── App.jsx
-│   │   └── main.jsx
-│   └── package.json
-│
-├── ml/
-│   ├── api/
-│   ├── model/
-│   ├── notebooks/
-│   ├── dockerfile
-│   ├── inference.py
-│   └── requirements.txt
+│   ├── supabase/
+│   ├── .env.example
+│   ├── README.md
+│   ├── package-lock.json
+│   ├── package.json
+│   └── server.js
 │
 ├── data/
-│   └── Dataset files
+│   ├── notebooks/
+│   ├── processed/
+│   ├── raw/
+│   └── data_dictionary.md
 │
 ├── docs/
 │   ├── assets/
@@ -184,7 +166,33 @@ workaholic-cc26-psu105/
 │   ├── api-contract.md
 │   └── project-plan.md
 │
-└── README.md
+├── frontend/
+│   ├── public/
+│   ├── src/
+│   ├── .env.example
+│   ├── .gitignore
+│   ├── README.md
+│   ├── eslint.config.js
+│   ├── index.html
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── postcss.config.js
+│   ├── tailwind.config.js
+│   └── vite.config.js
+│
+├── ml/
+│   ├── api/
+│   ├── model/
+│   ├── notebooks/
+│   ├── Dockerfile
+│   ├── inference.py
+│   └── requirements.txt
+│
+├── .gitattributes
+├── .gitignore
+├── LICENSE
+├── README.md
+└── requirements.txt
 ```
 
 ---
